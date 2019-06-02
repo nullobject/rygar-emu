@@ -2,9 +2,12 @@
 #include <stdio.h>
 
 #define CHIPS_IMPL
+#define COMMON_IMPL
+
 #include "chips/clk.h"
 #include "chips/mem.h"
 #include "chips/z80.h"
+#include "clock.h"
 #include "rygar-roms.h"
 #include "sokol_app.h"
 
@@ -28,6 +31,9 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
   return pins;
 }
 
+/**
+ * Initialise the rygar arcade hardware.
+ */
 static void rygar_init(void) {
   memset(&rygar, 0, sizeof(rygar));
 
@@ -45,11 +51,25 @@ static void rygar_init(void) {
   mem_map_rom(&rygar.main.mem, 0, 0x4000, 0x2000, dump_cpu_5m);
 }
 
+/**
+ * Run the emulation for one frame.
+ */
+static void rygar_exec(uint32_t delta) {
+  uint32_t ticks_to_run = clk_ticks_to_run(&rygar.main.clk, delta);
+  uint32_t ticks_executed = 0;
+  while (ticks_executed < ticks_to_run) {
+    ticks_executed += z80_exec(&rygar.main.cpu, ticks_to_run);
+  }
+  clk_ticks_executed(&rygar.main.clk, ticks_executed);
+}
+
 static void app_init(void) {
+  clock_init();
   rygar_init();
 }
 
 static void app_frame(void) {
+  rygar_exec(clock_frame_time());
 }
 
 static void app_input(const sapp_event* event) {
