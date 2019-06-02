@@ -39,11 +39,7 @@ static void rygar_init(void) {
   memset(&rygar, 0, sizeof(rygar));
 
   clk_init(&rygar.main.clk, 4000000);
-
-  // FIXME: Why can't we use the inline version?
-  /* z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main }); */
-  z80_desc_t desc = { .tick_cb = rygar_tick_main };
-  z80_init(&rygar.main.cpu, &desc);
+  z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
 
   // FIXME: What is the real memory map?
   mem_init(&rygar.main.mem);
@@ -68,7 +64,7 @@ static void app_init(void) {
   gfx_init(&(gfx_desc_t) {
     .aspect_x = 4,
     .aspect_y = 5,
-    .rot90 = false
+    .rot90 = true
   });
   clock_init();
   rygar_init();
@@ -76,6 +72,7 @@ static void app_init(void) {
 
 static void app_frame(void) {
   rygar_exec(clock_frame_time());
+  gfx_draw(DISPLAY_WIDTH, DISPLAY_HEIGHT);
 }
 
 static void app_input(const sapp_event* event) {
