@@ -1,6 +1,10 @@
-fips_begin_app(rygar cmdline)
+add_definitions(-DSOKOL_METAL)
+set(slang "metal_macos")
+
+fips_begin_app(rygar windowed)
   include_directories(roms)
   add_subdirectory(roms)
-  fips_files(rygar.cc)
+  fips_frameworks_osx(Cocoa QuartzCore Metal MetalKit AudioToolbox)
+  fips_files(sokol.m rygar.cc)
   fips_deps(roms)
 fips_end_app()

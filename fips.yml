@@ -7,3 +7,5 @@ policies:
 imports:
   chips:
     git: https://github.com/floooh/chips
+  sokol:
+    git: https://github.com/floooh/sokol

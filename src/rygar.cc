@@ -6,6 +6,10 @@
 #include "chips/mem.h"
 #include "chips/z80.h"
 #include "rygar-roms.h"
+#include "sokol_app.h"
+
+#define DISPLAY_WIDTH (256)
+#define DISPLAY_HEIGHT (256)
 
 typedef struct {
   z80_t cpu;
@@ -31,8 +35,8 @@ static void rygar_init(void) {
 
   // FIXME: Why can't we use the inline version?
   /* z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main }); */
-  z80_desc_t main_cpu = { .tick_cb = rygar_tick_main };
-  z80_init(&rygar.main.cpu, &main_cpu);
+  z80_desc_t desc = { .tick_cb = rygar_tick_main };
+  z80_init(&rygar.main.cpu, &desc);
 
   // FIXME: What is the real memory map?
   mem_init(&rygar.main.mem);
@@ -41,8 +45,27 @@ static void rygar_init(void) {
   mem_map_rom(&rygar.main.mem, 0, 0x4000, 0x2000, dump_cpu_5m);
 }
 
-int main(int argc, const char** argv) {
+static void app_init(void) {
   rygar_init();
-  printf("Hello World!\n");
-  return 0;
+}
+
+static void app_frame(void) {
+}
+
+static void app_input(const sapp_event* event) {
+}
+
+static void app_cleanup(void) {
+}
+
+sapp_desc sokol_main(int argc, char* argv[]) {
+  return (sapp_desc) {
+    .init_cb = app_init,
+    .frame_cb = app_frame,
+    .event_cb = app_input,
+    .cleanup_cb = app_cleanup,
+    .width = DISPLAY_WIDTH * 2,
+    .height = DISPLAY_HEIGHT * 2,
+    .window_title = "Rygar"
+  };
 }
