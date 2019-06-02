@@ -8,6 +8,7 @@
 #include "chips/mem.h"
 #include "chips/z80.h"
 #include "clock.h"
+#include "gfx.h"
 #include "rygar-roms.h"
 #include "sokol_app.h"
 
@@ -64,6 +65,11 @@ static void rygar_exec(uint32_t delta) {
 }
 
 static void app_init(void) {
+  gfx_init(&(gfx_desc_t) {
+    .aspect_x = 4,
+    .aspect_y = 5,
+    .rot90 = false
+  });
   clock_init();
   rygar_init();
 }
