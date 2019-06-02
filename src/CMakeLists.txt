@@ -1,3 +1,6 @@
 fips_begin_app(rygar cmdline)
+  include_directories(roms)
+  add_subdirectory(roms)
   fips_files(rygar.cc)
+  fips_deps(roms)
 fips_end_app()
