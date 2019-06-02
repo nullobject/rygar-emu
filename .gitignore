@@ -1,0 +1,8 @@
+#>fips
+# this area is managed by fips, do not edit
+.fips-*
+*.pyc
+.vscode/
+.idea/
+#<fips
+src/roms/rygar-roms.h
