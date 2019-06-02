@@ -29,12 +29,11 @@ typedef struct {
 
 typedef struct {
   mainboard_t main;
-  uint8_t ram[0x1000];
-  uint8_t tx_video_ram[0x800];
-  uint8_t fg_video_ram[0x400];
-  uint8_t bg_video_ram[0x400];
-  uint8_t sprite_ram[0x800];
-  uint8_t palette[0x800];
+  uint8_t main_ram[0x3000];
+  uint8_t rom_chars[0x8000];
+  uint8_t rom_sprites[0x20000];
+  uint8_t rom_tiles_1[0x20000];
+  uint8_t rom_tiles_2[0x20000];
 } rygar_t;
 
 rygar_t rygar;
@@ -45,17 +44,6 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
 
 /**
  * Initialise the rygar arcade hardware.
- *
- * 0000-7fff ROM0 (5P)
- * 8000-bfff ROM1 (5M)
- * c000-cfff RAM
- * d000-d7ff TX VIDEO RAM
- * d800-dbff FG VIDEO RAM
- * dc00-dfff BG VIDEO RAM
- * e000-e7ff SPRITE RAM
- * e800-efff PALETTE
- * f000-f7ff ROM2 (5J)
- * f800-ffff ?
  */
 static void rygar_init(void) {
   memset(&rygar, 0, sizeof(rygar));
@@ -66,16 +54,46 @@ static void rygar_init(void) {
   clk_init(&rygar.main.clk, 8000000);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
 
+  // 0000-7fff ROM0 (5P)
+  // 8000-bfff ROM1 (5M)
+  // c000-cfff RAM
+  // d000-d7ff TX VIDEO RAM
+  // d800-dbff FG VIDEO RAM
+  // dc00-dfff BG VIDEO RAM
+  // e000-e7ff SPRITE RAM
+  // e800-efff PALETTE
+  // f000-f7ff ROM2 (5J)
+  // f800-ffff ?
   mem_init(&rygar.main.mem);
-  mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
-  mem_map_rom(&rygar.main.mem, 0, 0x8000, 0x4000, dump_cpu_5m);
-  mem_map_ram(&rygar.main.mem, 0, 0xc000, 0x1000, rygar.ram);
-  mem_map_ram(&rygar.main.mem, 0, 0xd000, 0x800, rygar.tx_video_ram);
-  mem_map_ram(&rygar.main.mem, 0, 0xd800, 0x400, rygar.fg_video_ram);
-  mem_map_ram(&rygar.main.mem, 0, 0xdc00, 0x400, rygar.bg_video_ram);
-  mem_map_ram(&rygar.main.mem, 0, 0xe000, 0x800, rygar.sprite_ram);
-  mem_map_ram(&rygar.main.mem, 0, 0xe800, 0x800, rygar.palette);
-  mem_map_rom(&rygar.main.mem, 0, 0xf000, 0x800, dump_cpu_5j);
+
+  // ram
+  mem_map_ram(&rygar.main.mem, 0, 0x0c000, 0x3000, rygar.main_ram);
+
+  // code
+  mem_map_rom(&rygar.main.mem, 0, 0x00000, 0x8000, dump_5);
+  mem_map_rom(&rygar.main.mem, 0, 0x08000, 0x4000, dump_cpu_5m);
+  mem_map_rom(&rygar.main.mem, 0, 0x10000, 0x8000, dump_cpu_5j); // banked at f000-f7ff
+
+  // characters
+  memcpy(&rygar.rom_chars[0x00000], dump_cpu_8k, 0x8000);
+
+  // sprites
+  memcpy(&rygar.rom_sprites[0x00000], dump_vid_6k, 0x8000);
+  memcpy(&rygar.rom_sprites[0x08000], dump_vid_6j, 0x8000);
+  memcpy(&rygar.rom_sprites[0x10000], dump_vid_6h, 0x8000);
+  memcpy(&rygar.rom_sprites[0x18000], dump_vid_6g, 0x8000);
+
+  // tiles #1
+  memcpy(&rygar.rom_tiles_1[0x00000], dump_vid_6p, 0x8000);
+  memcpy(&rygar.rom_tiles_1[0x08000], dump_vid_6o, 0x8000);
+  memcpy(&rygar.rom_tiles_1[0x10000], dump_vid_6n, 0x8000);
+  memcpy(&rygar.rom_tiles_1[0x18000], dump_vid_6l, 0x8000);
+
+  // tiles #2
+  memcpy(&rygar.rom_tiles_2[0x00000], dump_vid_6f, 0x8000);
+  memcpy(&rygar.rom_tiles_2[0x08000], dump_vid_6e, 0x8000);
+  memcpy(&rygar.rom_tiles_2[0x10000], dump_vid_6c, 0x8000);
+  memcpy(&rygar.rom_tiles_2[0x18000], dump_vid_6b, 0x8000);
 }
 
 /**
