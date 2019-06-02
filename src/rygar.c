@@ -15,15 +15,26 @@
 #define DISPLAY_WIDTH (256)
 #define DISPLAY_HEIGHT (256)
 
+#define VSYNC_PERIOD_4MHZ (4000000 / 60)
+#define VBLANK_DURATION_4MHZ (((4000000 / 60) / 525) * (525 - 483))
+#define VSYNC_PERIOD_3MHZ (3000000 / 60)
+
 typedef struct {
   z80_t cpu;
   clk_t clk;
+  int vsync_count;
+  int vblank_count;
   mem_t mem;
 } mainboard_t;
 
 typedef struct {
   mainboard_t main;
-  uint8_t main_ram[0x1C00];
+  uint8_t ram[0x1000];
+  uint8_t tx_video_ram[0x800];
+  uint8_t fg_video_ram[0x400];
+  uint8_t bg_video_ram[0x400];
+  uint8_t sprite_ram[0x800];
+  uint8_t palette[0x800];
 } rygar_t;
 
 rygar_t rygar;
@@ -34,18 +45,37 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
 
 /**
  * Initialise the rygar arcade hardware.
+ *
+ * 0000-7fff ROM0 (5P)
+ * 8000-bfff ROM1 (5M)
+ * c000-cfff RAM
+ * d000-d7ff TX VIDEO RAM
+ * d800-dbff FG VIDEO RAM
+ * dc00-dfff BG VIDEO RAM
+ * e000-e7ff SPRITE RAM
+ * e800-efff PALETTE
+ * f000-f7ff ROM2 (5J)
+ * f800-ffff ?
  */
 static void rygar_init(void) {
   memset(&rygar, 0, sizeof(rygar));
 
+  rygar.main.vsync_count = VSYNC_PERIOD_4MHZ;
+  rygar.main.vblank_count = 0;
+
   clk_init(&rygar.main.clk, 4000000);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
 
-  // FIXME: What is the real memory map?
   mem_init(&rygar.main.mem);
-  mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x2000, dump_5);
-  mem_map_rom(&rygar.main.mem, 0, 0x2000, 0x2000, dump_cpu_5j);
-  mem_map_rom(&rygar.main.mem, 0, 0x4000, 0x2000, dump_cpu_5m);
+  mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
+  mem_map_rom(&rygar.main.mem, 0, 0x8000, 0x4000, dump_cpu_5m);
+  mem_map_ram(&rygar.main.mem, 0, 0xc000, 0x1000, rygar.ram);
+  mem_map_ram(&rygar.main.mem, 0, 0xd000, 0x800, rygar.tx_video_ram);
+  mem_map_ram(&rygar.main.mem, 0, 0xd800, 0x400, rygar.fg_video_ram);
+  mem_map_ram(&rygar.main.mem, 0, 0xdc00, 0x400, rygar.bg_video_ram);
+  mem_map_ram(&rygar.main.mem, 0, 0xe000, 0x800, rygar.sprite_ram);
+  mem_map_ram(&rygar.main.mem, 0, 0xe800, 0x800, rygar.palette);
+  mem_map_rom(&rygar.main.mem, 0, 0xf000, 0x800, dump_cpu_5j);
 }
 
 /**
@@ -79,6 +109,7 @@ static void app_input(const sapp_event* event) {
 }
 
 static void app_cleanup(void) {
+  gfx_shutdown();
 }
 
 sapp_desc sokol_main(int argc, char* argv[]) {
