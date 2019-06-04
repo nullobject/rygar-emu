@@ -25,6 +25,7 @@ typedef struct {
   int vsync_count;
   int vblank_count;
   mem_t mem;
+  uint8_t current_bank;
 } mainboard_t;
 
 typedef struct {
@@ -38,7 +39,52 @@ typedef struct {
 
 rygar_t rygar;
 
+/**
+ * Handle IO
+ */
 static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
+  rygar.main.vsync_count -= num_ticks;
+
+  if (rygar.main.vsync_count <= 0) {
+    rygar.main.vsync_count += VSYNC_PERIOD_4MHZ;
+    rygar.main.vblank_count = VBLANK_DURATION_4MHZ;
+  }
+
+  if (rygar.main.vblank_count > 0) {
+    rygar.main.vblank_count -= num_ticks;
+    pins |= Z80_INT; // activate INT pin during VBLANK
+  } else {
+    rygar.main.vblank_count = 0;
+  }
+
+  uint16_t addr = Z80_GET_ADDR(pins);
+
+  if (pins & Z80_MREQ) {
+    if (pins & Z80_WR) {
+      uint8_t data = Z80_GET_DATA(pins);
+      /* printf("W 0x%04x 0x%02x \n", addr, data); */
+      /* if ((addr >= RAM_START) && (addr <= RAM_END)) { */
+      if (BETWEEN(addr, RAM_START, RAM_END)) {
+        mem_wr(&rygar.main.mem, addr, data);
+      } else if (addr == BANK_SWITCH) {
+        rygar.main.current_bank = data >> 3; // bank addressed by DO3-DO6 in schematic
+      }
+    } else if (pins & Z80_RD) {
+      /* printf("R 0x%04x\n", addr); */
+      if (addr <= RAM_END) {
+        Z80_SET_DATA(pins, mem_rd(&rygar.main.mem, addr));
+      } else if (BETWEEN(addr, BANK_WINDOW_START, BANK_WINDOW_END)) {
+        uint16_t banked_addr = addr - BANK_WINDOW_START + (rygar.main.current_bank * BANK_WINDOW_SIZE);
+        Z80_SET_DATA(pins, rygar.main_bank[banked_addr]);
+      } else {
+        Z80_SET_DATA(pins, 0x00);
+      }
+    }
+  } else if ((pins & Z80_IORQ) && (pins & Z80_M1)) {
+    // Clear interrupt.
+    pins &= ~Z80_INT;
+  }
+
   return pins;
 }
 
