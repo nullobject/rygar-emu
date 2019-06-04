@@ -12,12 +12,38 @@
 #include "rygar-roms.h"
 #include "sokol_app.h"
 
+#define BETWEEN(n, a, b) ((n >= a) && (n <= b))
+
+#define CHAR_ROM_SIZE (0x8000)
+#define SPRITE_ROM_SIZE (0x20000)
+#define TILE_ROM_SIZE (0x20000)
+
+#define TX_RAM_START (0xd000)
+#define FG_RAM_START (0xd800)
+#define BG_RAM_START (0xdc00)
+#define SPRITE_RAM_START (0xe000)
+#define PALETTE_RAM_START (0xe800)
+
+#define RAM_SIZE (0x3000)
+#define RAM_START (0xc000)
+#define RAM_END (RAM_START + RAM_SIZE - 1)
+
+#define BANK_SIZE (0x8000)
+#define BANK_WINDOW_SIZE (0x800)
+#define BANK_WINDOW_START (0xf000)
+#define BANK_WINDOW_END (BANK_WINDOW_START + BANK_WINDOW_SIZE - 1)
+
+#define FLIP_SCREEN 0xf807
+#define BANK_SWITCH 0xf808
+
+#define NUM_BITPLANES (4)
+#define TILE_SIZE (32) // bytes
+
 #define DISPLAY_WIDTH (256)
 #define DISPLAY_HEIGHT (256)
 
 #define VSYNC_PERIOD_4MHZ (4000000 / 60)
 #define VBLANK_DURATION_4MHZ (((4000000 / 60) / 525) * (525 - 483))
-#define VSYNC_PERIOD_3MHZ (3000000 / 60)
 
 typedef struct {
   z80_t cpu;
@@ -30,11 +56,12 @@ typedef struct {
 
 typedef struct {
   mainboard_t main;
-  uint8_t main_ram[0x3000];
-  uint8_t rom_chars[0x8000];
-  uint8_t rom_sprites[0x20000];
-  uint8_t rom_tiles_1[0x20000];
-  uint8_t rom_tiles_2[0x20000];
+  uint8_t main_ram[RAM_SIZE];
+  uint8_t main_bank[BANK_SIZE];
+  uint8_t char_rom[CHAR_ROM_SIZE];
+  uint8_t sprite_rom[SPRITE_ROM_SIZE];
+  uint8_t tile_rom_1[TILE_ROM_SIZE];
+  uint8_t tile_rom_2[TILE_ROM_SIZE];
 } rygar_t;
 
 rygar_t rygar;
@@ -100,46 +127,81 @@ static void rygar_init(void) {
   clk_init(&rygar.main.clk, 6000000);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
 
-  // 0000-7fff ROM0 (5P)
-  // 8000-bfff ROM1 (5M)
-  // c000-cfff RAM
+  // 0000-bfff ROM
+  // c000-cfff WORK RAM
   // d000-d7ff TX VIDEO RAM
   // d800-dbff FG VIDEO RAM
   // dc00-dfff BG VIDEO RAM
   // e000-e7ff SPRITE RAM
   // e800-efff PALETTE
-  // f000-f7ff ROM2 (5J)
+  // f000-f7ff WINDOW FOR BANKED ROM
   // f800-ffff ?
   mem_init(&rygar.main.mem);
+  mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
+  mem_map_rom(&rygar.main.mem, 0, 0x8000, 0x4000, dump_cpu_5m);
+  mem_map_ram(&rygar.main.mem, 0, RAM_START, RAM_SIZE, rygar.main_ram);
 
-  // ram
-  mem_map_ram(&rygar.main.mem, 0, 0x0c000, 0x3000, rygar.main_ram);
+  // banked ROM at f000-f7ff
+  memcpy(&rygar.main_bank[0x00000], dump_cpu_5j, 0x8000);
 
-  // code
-  mem_map_rom(&rygar.main.mem, 0, 0x00000, 0x8000, dump_5);
-  mem_map_rom(&rygar.main.mem, 0, 0x08000, 0x4000, dump_cpu_5m);
-  mem_map_rom(&rygar.main.mem, 0, 0x10000, 0x8000, dump_cpu_5j); // banked at f000-f7ff
+  // char ROM
+  memcpy(&rygar.char_rom[0x00000], dump_cpu_8k, 0x8000);
 
-  // characters
-  memcpy(&rygar.rom_chars[0x00000], dump_cpu_8k, 0x8000);
+  // sprite ROM
+  memcpy(&rygar.sprite_rom[0x00000], dump_vid_6k, 0x8000);
+  memcpy(&rygar.sprite_rom[0x08000], dump_vid_6j, 0x8000);
+  memcpy(&rygar.sprite_rom[0x10000], dump_vid_6h, 0x8000);
+  memcpy(&rygar.sprite_rom[0x18000], dump_vid_6g, 0x8000);
 
-  // sprites
-  memcpy(&rygar.rom_sprites[0x00000], dump_vid_6k, 0x8000);
-  memcpy(&rygar.rom_sprites[0x08000], dump_vid_6j, 0x8000);
-  memcpy(&rygar.rom_sprites[0x10000], dump_vid_6h, 0x8000);
-  memcpy(&rygar.rom_sprites[0x18000], dump_vid_6g, 0x8000);
+  // tile ROM #1
+  memcpy(&rygar.tile_rom_1[0x00000], dump_vid_6p, 0x8000);
+  memcpy(&rygar.tile_rom_1[0x08000], dump_vid_6o, 0x8000);
+  memcpy(&rygar.tile_rom_1[0x10000], dump_vid_6n, 0x8000);
+  memcpy(&rygar.tile_rom_1[0x18000], dump_vid_6l, 0x8000);
 
-  // tiles #1
-  memcpy(&rygar.rom_tiles_1[0x00000], dump_vid_6p, 0x8000);
-  memcpy(&rygar.rom_tiles_1[0x08000], dump_vid_6o, 0x8000);
-  memcpy(&rygar.rom_tiles_1[0x10000], dump_vid_6n, 0x8000);
-  memcpy(&rygar.rom_tiles_1[0x18000], dump_vid_6l, 0x8000);
+  // tile ROM #2
+  memcpy(&rygar.tile_rom_2[0x00000], dump_vid_6f, 0x8000);
+  memcpy(&rygar.tile_rom_2[0x08000], dump_vid_6e, 0x8000);
+  memcpy(&rygar.tile_rom_2[0x10000], dump_vid_6c, 0x8000);
+  memcpy(&rygar.tile_rom_2[0x18000], dump_vid_6b, 0x8000);
+}
 
-  // tiles #2
-  memcpy(&rygar.rom_tiles_2[0x00000], dump_vid_6f, 0x8000);
-  memcpy(&rygar.rom_tiles_2[0x08000], dump_vid_6e, 0x8000);
-  memcpy(&rygar.rom_tiles_2[0x10000], dump_vid_6c, 0x8000);
-  memcpy(&rygar.rom_tiles_2[0x18000], dump_vid_6b, 0x8000);
+/**
+ * Draws a single 8x8 tile.
+ */
+static void draw_tile(uint32_t* buffer, uint16_t index, uint8_t color) {
+  for (int y = 0; y < 8; y++) {
+    int tile_addr = index*TILE_SIZE + y*NUM_BITPLANES;
+    uint32_t* ptr = buffer + y*DISPLAY_WIDTH;
+
+    for (int x = 0; x < 4; x++) {
+      // The bytes in the char ROM are divided into high and low pixels for
+      // each bitplane.
+      uint8_t hi = (rygar.char_rom[tile_addr + x] >> 4) & 0xf;
+      uint8_t lo = rygar.char_rom[tile_addr + x] & 0xf;
+
+      // FIXME: Lookup color from palette RAM.
+      *ptr++ = 0xff000000 | (hi << 21) | (hi << 13) | (hi << 5);
+      *ptr++ = 0xff000000 | (lo << 21) | (lo << 13) | (lo << 5);
+    }
+  }
+}
+
+/**
+ * Draws 32x32 char tiles.
+ */
+static void rygar_draw_tx_tiles(uint32_t* buffer) {
+  for (int y = 0; y < 32; y++) {
+    for (int x = 0; x < 32; x++) {
+      int addr = TX_RAM_START - RAM_START + y*32 + x;
+      uint8_t color = rygar.main_ram[addr + 0x400];
+      // 10-bit tile index (8-bits from tile value, with the 9th and 10th bits
+      // borrowed from the color value).
+      uint16_t index = rygar.main_ram[addr] + ((color & 0x03) << 8);
+      uint32_t* ptr = buffer + y*DISPLAY_WIDTH*8 + x*8;
+      draw_tile(ptr, index, color >> 4);
+    }
+  }
 }
 
 /**
@@ -152,6 +214,9 @@ static void rygar_exec(uint32_t delta) {
     ticks_executed += z80_exec(&rygar.main.cpu, ticks_to_run);
   }
   clk_ticks_executed(&rygar.main.clk, ticks_executed);
+
+  uint32_t* buffer = gfx_framebuffer();
+  rygar_draw_tx_tiles(buffer);
 }
 
 static void app_init(void) {
