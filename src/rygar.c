@@ -18,7 +18,7 @@
 #define SPRITE_ROM_SIZE (0x20000)
 #define TILE_ROM_SIZE (0x20000)
 
-#define TX_RAM_START (0xd000)
+#define CHAR_RAM_START (0xd000)
 #define FG_RAM_START (0xd800)
 #define BG_RAM_START (0xdc00)
 #define SPRITE_RAM_START (0xe000)
@@ -163,7 +163,7 @@ static void rygar_init(void) {
 
   // 0000-bfff ROM
   // c000-cfff WORK RAM
-  // d000-d7ff TX VIDEO RAM
+  // d000-d7ff CHAR VIDEO RAM
   // d800-dbff FG VIDEO RAM
   // dc00-dfff BG VIDEO RAM
   // e000-e7ff SPRITE RAM
@@ -224,12 +224,12 @@ static void draw_tile(uint32_t* buffer, uint16_t index, uint8_t color, uint16_t 
 /**
  * Draws 32x32 char tiles.
  */
-static void rygar_draw_tx_tiles(uint32_t* buffer) {
+static void rygar_draw_char_tiles(uint32_t* buffer) {
   for (int y = 0; y < 32; y++) {
     for (int x = 0; x < 32; x++) {
       uint32_t* ptr = buffer + y*DISPLAY_WIDTH*8 + x*8;
 
-      int addr = TX_RAM_START - RAM_START + y*32 + x;
+      int addr = CHAR_RAM_START - RAM_START + y*32 + x;
       uint8_t lo = rygar.main_ram[addr];
       uint8_t hi = rygar.main_ram[addr + 0x400];
 
@@ -257,7 +257,7 @@ static void rygar_exec(uint32_t delta) {
   clk_ticks_executed(&rygar.main.clk, ticks_executed);
 
   uint32_t* buffer = gfx_framebuffer();
-  rygar_draw_tx_tiles(buffer);
+  rygar_draw_char_tiles(buffer);
 }
 
 static void app_init(void) {
