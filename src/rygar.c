@@ -40,7 +40,6 @@
 #define BANK_SWITCH 0xf808
 
 #define NUM_BITPLANES (4)
-#define TILE_SIZE (32) // bytes
 
 #define DISPLAY_WIDTH (256)
 #define DISPLAY_HEIGHT (256)
@@ -205,13 +204,14 @@ static void rygar_init(void) {
  */
 static void draw_tile(uint32_t* buffer, uint16_t index, uint8_t color, uint16_t offset) {
   for (int y = 0; y < 8; y++) {
-    int addr = index*TILE_SIZE + y*NUM_BITPLANES;
+    int addr = index*32 + y*NUM_BITPLANES;
     uint32_t* ptr = buffer + y*DISPLAY_WIDTH;
 
     for (int x = 0; x < 4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
-      // The low and high nibbles represent the bitplane values for each pixel.
       uint8_t data = rygar.char_rom[addr + x];
+
+      // The low and high nibbles represent the bitplane values for each pixel.
       uint8_t hi = (data >> 4) & 0xf;
       uint8_t lo = data & 0xf;
 
@@ -245,6 +245,90 @@ static void rygar_draw_char_tiles(uint32_t* buffer) {
   }
 }
 
+static void draw_fg_tile(uint32_t* buffer, uint16_t index, uint8_t color, uint16_t offset) {
+  for (int y = 0; y < 8; y++) {
+    int addr = index*128 + y*NUM_BITPLANES;
+    uint32_t* ptr = buffer + y*DISPLAY_WIDTH;
+
+    for (int x = 0; x < 4; x++) {
+      // Each byte in the char ROM contains the bitplane values for two pixels.
+      uint8_t data = rygar.tile_rom_1[addr + x];
+
+      // The low and high nibbles represent the bitplane values for each pixel.
+      uint8_t hi = (data >> 4) & 0xf;
+      uint8_t lo = data & 0xf;
+
+      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
+      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+    }
+
+    for (int x = 0; x < 4; x++) {
+      // Each byte in the char ROM contains the bitplane values for two pixels.
+      uint8_t data = rygar.tile_rom_1[addr + x + 32];
+
+      // The low and high nibbles represent the bitplane values for each pixel.
+      uint8_t hi = (data >> 4) & 0xf;
+      uint8_t lo = data & 0xf;
+
+      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
+      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+    }
+  }
+
+  for (int y = 0; y < 8; y++) {
+    int addr = index*128 + y*NUM_BITPLANES + 64;
+    uint32_t* ptr = buffer + (y+8)*DISPLAY_WIDTH;
+
+    for (int x = 0; x < 4; x++) {
+      // Each byte in the char ROM contains the bitplane values for two pixels.
+      uint8_t data = rygar.tile_rom_1[addr + x];
+
+      // The low and high nibbles represent the bitplane values for each pixel.
+      uint8_t hi = (data >> 4) & 0xf;
+      uint8_t lo = data & 0xf;
+
+      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
+      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+    }
+
+    for (int x = 0; x < 4; x++) {
+      // Each byte in the char ROM contains the bitplane values for two pixels.
+      uint8_t data = rygar.tile_rom_1[addr + x + 32];
+
+      // The low and high nibbles represent the bitplane values for each pixel.
+      uint8_t hi = (data >> 4) & 0xf;
+      uint8_t lo = data & 0xf;
+
+      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
+      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+    }
+  }
+}
+
+/**
+ * Draws 32x32 char tiles.
+ */
+static void rygar_draw_fg_tiles(uint32_t* buffer) {
+  for (int y = 0; y < 16; y++) {
+    for (int x = 0; x < 16; x++) {
+      uint32_t* ptr = buffer + y*DISPLAY_WIDTH*16 + x*16;
+
+      int addr = FG_RAM_START - RAM_START + y*32 + x;
+      uint8_t lo = rygar.main_ram[addr];
+      uint8_t hi = rygar.main_ram[addr + 0x200];
+
+      // The tile index is a 10-bit value, represented by the low byte and the
+      // three LSBs of the high byte.
+      uint16_t index = ((hi & 0x07) << 8) | lo;
+
+      // The four MSBs of the high byte represent the color value.
+      uint8_t color = hi>>4;
+
+      draw_fg_tile(ptr, index, color, 0x200);
+    }
+  }
+}
+
 /**
  * Run the emulation for one frame.
  */
@@ -258,6 +342,7 @@ static void rygar_exec(uint32_t delta) {
 
   uint32_t* buffer = gfx_framebuffer();
   rygar_draw_char_tiles(buffer);
+  rygar_draw_fg_tiles(buffer);
 }
 
 static void app_init(void) {
