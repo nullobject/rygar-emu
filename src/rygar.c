@@ -157,8 +157,8 @@ static void rygar_exec(uint32_t delta) {
 static void app_init(void) {
   gfx_init(&(gfx_desc_t) {
     .aspect_x = 4,
-    .aspect_y = 5,
-    .rot90 = true
+    .aspect_y = 3,
+    .rot90 = false
   });
   clock_init();
   rygar_init();
@@ -182,8 +182,8 @@ sapp_desc sokol_main(int argc, char* argv[]) {
     .frame_cb = app_frame,
     .event_cb = app_input,
     .cleanup_cb = app_cleanup,
-    .width = DISPLAY_WIDTH * 2,
-    .height = DISPLAY_HEIGHT * 2,
+    .width = DISPLAY_WIDTH * 4,
+    .height = DISPLAY_HEIGHT * 3,
     .window_title = "Rygar"
   };
 }
