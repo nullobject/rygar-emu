@@ -124,7 +124,7 @@ static void rygar_init(void) {
   rygar.main.vsync_count = VSYNC_PERIOD_4MHZ;
   rygar.main.vblank_count = 0;
 
-  clk_init(&rygar.main.clk, 6000000);
+  clk_init(&rygar.main.clk, 4000000);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
 
   // 0000-bfff ROM
