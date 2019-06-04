@@ -22,7 +22,10 @@
 #define FG_RAM_START (0xd800)
 #define BG_RAM_START (0xdc00)
 #define SPRITE_RAM_START (0xe000)
+
+#define PALETTE_RAM_SIZE (0x800)
 #define PALETTE_RAM_START (0xe800)
+#define PALETTE_RAM_END (PALETTE_RAM_START + PALETTE_RAM_SIZE - 1)
 
 #define RAM_SIZE (0x3000)
 #define RAM_START (0xc000)
@@ -62,9 +65,37 @@ typedef struct {
   uint8_t sprite_rom[SPRITE_ROM_SIZE];
   uint8_t tile_rom_1[TILE_ROM_SIZE];
   uint8_t tile_rom_2[TILE_ROM_SIZE];
+  /* 32-bit RGBA color palette cache */
+  uint32_t palette_cache[1024];
 } rygar_t;
 
 rygar_t rygar;
+
+/*
+ * Maintain a color palette cache with 32-bit colors, this is called for CPU
+ * writes to the palette RAM area. The hardware palette is 1024 entries of
+ * 16-bit colors (xxxxBBBBRRRRGGGG), the function keeps a 'palette cache' with
+ * 32-bit colors up to date, so that the 32-bit colors don't need to be
+ * computed for each pixel in the video decoding code.
+ *
+ * R:4, G:0, B:8
+ */
+static inline void rygar_update_palette_cache(uint16_t addr, uint8_t data) {
+  assert((addr >= PALETTE_RAM_START) && (addr <= PALETTE_RAM_END));
+  int pal_index = (addr - PALETTE_RAM_START) / 2;
+  uint32_t c = rygar.palette_cache[pal_index];
+  if (addr & 1) {
+    /* odd addresses are the RRRRGGGG part */
+    uint8_t r = (data & 0xf0) | ((data>>4)&0x0f);
+    uint8_t g = (data & 0x0f) | ((data<<4)&0xf0);
+    c = 0xff000000 | (c & 0x00ff0000) | (g<<8) | r;
+  } else {
+    /* even addresses are the xxxxBBBB part */
+    uint8_t b = (data & 0x0f) | ((data<<4)&0xf0);
+    c = 0xff000000 | (c & 0x0000ffff) | (b<<16);
+  }
+  rygar.palette_cache[pal_index] = c;
+}
 
 /**
  * Handle IO
@@ -89,15 +120,15 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
   if (pins & Z80_MREQ) {
     if (pins & Z80_WR) {
       uint8_t data = Z80_GET_DATA(pins);
-      /* printf("W 0x%04x 0x%02x \n", addr, data); */
-      /* if ((addr >= RAM_START) && (addr <= RAM_END)) { */
       if (BETWEEN(addr, RAM_START, RAM_END)) {
         mem_wr(&rygar.main.mem, addr, data);
+        if (BETWEEN(addr, PALETTE_RAM_START, PALETTE_RAM_END)) {
+          rygar_update_palette_cache(addr, data);
+        }
       } else if (addr == BANK_SWITCH) {
         rygar.main.current_bank = data >> 3; // bank addressed by DO3-DO6 in schematic
       }
     } else if (pins & Z80_RD) {
-      /* printf("R 0x%04x\n", addr); */
       if (addr <= RAM_END) {
         Z80_SET_DATA(pins, mem_rd(&rygar.main.mem, addr));
       } else if (BETWEEN(addr, BANK_WINDOW_START, BANK_WINDOW_END)) {
@@ -124,7 +155,7 @@ static void rygar_init(void) {
   rygar.main.vsync_count = VSYNC_PERIOD_4MHZ;
   rygar.main.vblank_count = 0;
 
-  clk_init(&rygar.main.clk, 6000000);
+  clk_init(&rygar.main.clk, 4000000);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
 
   // 0000-bfff ROM
@@ -177,12 +208,12 @@ static void draw_tile(uint32_t* buffer, uint16_t index, uint8_t color) {
     for (int x = 0; x < 4; x++) {
       // The bytes in the char ROM are divided into high and low pixels for
       // each bitplane.
-      uint8_t hi = (rygar.char_rom[tile_addr + x] >> 4) & 0xf;
-      uint8_t lo = rygar.char_rom[tile_addr + x] & 0xf;
+      uint8_t data = rygar.char_rom[tile_addr + x];
+      uint8_t hi = (data >> 4) & 0xf;
+      uint8_t lo = data & 0xf;
 
-      // FIXME: Lookup color from palette RAM.
-      *ptr++ = 0xff000000 | (hi << 21) | (hi << 13) | (hi << 5);
-      *ptr++ = 0xff000000 | (lo << 21) | (lo << 13) | (lo << 5);
+      *ptr++ = rygar.palette_cache[0x100 | color<<4 | hi];
+      *ptr++ = rygar.palette_cache[0x100 | color<<4 | lo];
     }
   }
 }
@@ -195,11 +226,11 @@ static void rygar_draw_tx_tiles(uint32_t* buffer) {
     for (int x = 0; x < 32; x++) {
       int addr = TX_RAM_START - RAM_START + y*32 + x;
       uint8_t color = rygar.main_ram[addr + 0x400];
-      // 10-bit tile index (8-bits from tile value, with the 9th and 10th bits
-      // borrowed from the color value).
-      uint16_t index = rygar.main_ram[addr] + ((color & 0x03) << 8);
+      // The 10-bit tile index (8-bits from tile value, with the 9th and 10th
+      // bits borrowed from the color value).
+      uint16_t index = ((color & 0x03) << 8) | rygar.main_ram[addr];
       uint32_t* ptr = buffer + y*DISPLAY_WIDTH*8 + x*8;
-      draw_tile(ptr, index, color >> 4);
+      draw_tile(ptr, index, color>>4);
     }
   }
 }
