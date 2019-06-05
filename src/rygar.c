@@ -36,6 +36,12 @@
 #define BANK_WINDOW_START (0xf000)
 #define BANK_WINDOW_END (BANK_WINDOW_START + BANK_WINDOW_SIZE - 1)
 
+// write
+#define FG_SCROLL_START 0xf800
+#define FG_SCROLL_END 0xf802
+#define BG_SCROLL_START 0xf803
+#define BG_SCROLL_END 0xf805
+#define SOUND_LATCH 0xf807
 #define FLIP_SCREEN 0xf807
 #define BANK_SWITCH 0xf808
 
@@ -54,6 +60,8 @@ typedef struct {
   int vblank_count;
   mem_t mem;
   uint8_t current_bank;
+  uint8_t fg_scroll[3]; // XXY
+  uint8_t bg_scroll[3]; // XXY
 } mainboard_t;
 
 typedef struct {
@@ -101,6 +109,22 @@ static inline void rygar_update_palette_cache(uint16_t addr, uint8_t data) {
 
 /**
  * Handle IO
+ *
+ * 0000-bfff ROM
+ * c000-cfff WORK RAM
+ * d000-d7ff CHAR VIDEO RAM
+ * d800-dbff FG VIDEO RAM
+ * dc00-dfff BG VIDEO RAM
+ * e000-e7ff SPRITE RAM
+ * e800-efff PALETTE
+ * f000-f7ff WINDOW FOR BANKED ROM
+ * f800-ffff ?
+ *
+ * f800-f802 FG SCROLL
+ * f803-f805 BG SCROLL
+ * f806      SOUND LATCH
+ * f807      FLIP SCREEN
+ * f808      BANK SWITCH
  */
 static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
   rygar.main.vsync_count -= num_ticks;
@@ -122,11 +146,20 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
   if (pins & Z80_MREQ) {
     if (pins & Z80_WR) {
       uint8_t data = Z80_GET_DATA(pins);
+
       if (BETWEEN(addr, RAM_START, RAM_END)) {
         mem_wr(&rygar.main.mem, addr, data);
+
+        // Update the palette cache if we're writing to the palette RAM.
         if (BETWEEN(addr, PALETTE_RAM_START, PALETTE_RAM_END)) {
           rygar_update_palette_cache(addr, data);
         }
+      } else if (BETWEEN(addr, FG_SCROLL_START, FG_SCROLL_END)) {
+        uint8_t offset = addr - FG_SCROLL_START;
+        *(rygar.main.fg_scroll + offset) = data;
+      } else if (BETWEEN(addr, BG_SCROLL_START, BG_SCROLL_END)) {
+        uint8_t offset = addr - BG_SCROLL_START;
+        *(rygar.main.fg_scroll + offset) = data;
       } else if (addr == BANK_SWITCH) {
         rygar.main.current_bank = data >> 3; // bank addressed by DO3-DO6 in schematic
       }
@@ -160,15 +193,6 @@ static void rygar_init(void) {
   clk_init(&rygar.main.clk, 4000000);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
 
-  // 0000-bfff ROM
-  // c000-cfff WORK RAM
-  // d000-d7ff CHAR VIDEO RAM
-  // d800-dbff FG VIDEO RAM
-  // dc00-dfff BG VIDEO RAM
-  // e000-e7ff SPRITE RAM
-  // e800-efff PALETTE
-  // f000-f7ff WINDOW FOR BANKED ROM
-  // f800-ffff ?
   mem_init(&rygar.main.mem);
   mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
   mem_map_rom(&rygar.main.mem, 0, 0x8000, 0x4000, dump_cpu_5m);
