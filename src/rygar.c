@@ -200,6 +200,20 @@ static void rygar_init(void) {
 }
 
 /**
+ * Draws a single pixel.
+ */
+static void draw_pixel(uint32_t* ptr, uint32_t data, uint8_t color, uint16_t offset) {
+  // The low and high nibbles represent the bitplane values for each pixel.
+  uint8_t hi = (data >> 4) & 0xf;
+  uint8_t lo = data & 0xf;
+
+  if (hi != 0) { *ptr = rygar.palette_cache[offset | (color << 4) | hi]; }
+  ptr++;
+  if (lo != 0) { *ptr = rygar.palette_cache[offset | (color << 4) | lo]; }
+  ptr++;
+}
+
+/**
  * Draws a single 8x8 tile.
  */
 static void draw_tile(uint32_t* buffer, uint16_t index, uint8_t color, uint16_t offset) {
@@ -210,13 +224,8 @@ static void draw_tile(uint32_t* buffer, uint16_t index, uint8_t color, uint16_t 
     for (int x = 0; x < 4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rygar.char_rom[addr + x];
-
-      // The low and high nibbles represent the bitplane values for each pixel.
-      uint8_t hi = (data >> 4) & 0xf;
-      uint8_t lo = data & 0xf;
-
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+      draw_pixel(ptr, data, color, offset);
+      ptr+=2;
     }
   }
 }
@@ -253,25 +262,15 @@ static void draw_fg_tile(uint32_t* buffer, uint16_t index, uint8_t color, uint16
     for (int x = 0; x < 4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rygar.tile_rom_1[addr + x];
-
-      // The low and high nibbles represent the bitplane values for each pixel.
-      uint8_t hi = (data >> 4) & 0xf;
-      uint8_t lo = data & 0xf;
-
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+      draw_pixel(ptr, data, color, offset);
+      ptr+=2;
     }
 
     for (int x = 0; x < 4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rygar.tile_rom_1[addr + x + 32];
-
-      // The low and high nibbles represent the bitplane values for each pixel.
-      uint8_t hi = (data >> 4) & 0xf;
-      uint8_t lo = data & 0xf;
-
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+      draw_pixel(ptr, data, color, offset);
+      ptr+=2;
     }
   }
 
@@ -282,25 +281,15 @@ static void draw_fg_tile(uint32_t* buffer, uint16_t index, uint8_t color, uint16
     for (int x = 0; x < 4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rygar.tile_rom_1[addr + x];
-
-      // The low and high nibbles represent the bitplane values for each pixel.
-      uint8_t hi = (data >> 4) & 0xf;
-      uint8_t lo = data & 0xf;
-
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+      draw_pixel(ptr, data, color, offset);
+      ptr+=2;
     }
 
     for (int x = 0; x < 4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rygar.tile_rom_1[addr + x + 32];
-
-      // The low and high nibbles represent the bitplane values for each pixel.
-      uint8_t hi = (data >> 4) & 0xf;
-      uint8_t lo = data & 0xf;
-
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | hi];
-      *ptr++ = rygar.palette_cache[offset | (color << 4) | lo];
+      draw_pixel(ptr, data, color, offset);
+      ptr+=2;
     }
   }
 }
@@ -341,8 +330,9 @@ static void rygar_exec(uint32_t delta) {
   clk_ticks_executed(&rygar.main.clk, ticks_executed);
 
   uint32_t* buffer = gfx_framebuffer();
-  rygar_draw_char_tiles(buffer);
+  memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(buffer[0]));
   rygar_draw_fg_tiles(buffer);
+  rygar_draw_char_tiles(buffer);
 }
 
 static void app_init(void) {
