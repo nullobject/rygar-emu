@@ -156,10 +156,10 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
         }
       } else if (BETWEEN(addr, FG_SCROLL_START, FG_SCROLL_END)) {
         uint8_t offset = addr - FG_SCROLL_START;
-        *(rygar.main.fg_scroll + offset) = data;
+        rygar.main.fg_scroll[offset] = data;
       } else if (BETWEEN(addr, BG_SCROLL_START, BG_SCROLL_END)) {
         uint8_t offset = addr - BG_SCROLL_START;
-        *(rygar.main.fg_scroll + offset) = data;
+        rygar.main.bg_scroll[offset] = data;
       } else if (addr == BANK_SWITCH) {
         rygar.main.current_bank = data >> 3; // bank addressed by DO3-DO6 in schematic
       }
