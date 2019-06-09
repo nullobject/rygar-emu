@@ -49,8 +49,9 @@
 #define DISPLAY_WIDTH 256
 #define DISPLAY_HEIGHT 256
 
-// XXX: The horizontal scroll offset appears to be 48, and the MAME source code
-// confirms this value. But why?
+// The tilemap horizontal scroll values are offset by a fixed value, due to
+// hardware timing constraints, etc. We don't need an adjusted scroll value, so
+// we need to correct it.
 #define SCROLL_OFFSET 48
 
 #define VSYNC_PERIOD_4MHZ (4000000 / 60)
@@ -98,13 +99,13 @@ static inline void rygar_update_palette_cache(uint16_t addr, uint8_t data) {
 
   if (addr & 1) {
     /* odd addresses are the RRRRGGGG part */
-    uint8_t r = (data & 0xf0) | ((data >> 4) & 0x0f);
-    uint8_t g = (data & 0x0f) | ((data << 4) & 0xf0);
-    c = 0xff000000 | (c & 0x00ff0000) | (g << 8) | r;
+    uint8_t r = (data & 0xf0) | (data>>4 & 0x0f);
+    uint8_t g = (data & 0x0f) | (data<<4 & 0xf0);
+    c = 0xff000000 | (c & 0x00ff0000) | g<<8 | r;
   } else {
     /* even addresses are the xxxxBBBB part */
-    uint8_t b = (data & 0x0f) | ((data << 4) & 0xf0);
-    c = 0xff000000 | (c & 0x0000ffff) | (b << 16);
+    uint8_t b = (data & 0x0f) | (data<<4 & 0xf0);
+    c = 0xff000000 | (c & 0x0000ffff) | b << 16;
   }
 
   rygar.palette_cache[pal_index] = c;
@@ -248,9 +249,9 @@ static void rygar_exec(uint32_t delta) {
   memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(buffer[0]));
 
   // Draw graphics layers.
-  draw_16x16_tilemap(buffer, rygar.palette_cache + 0x300, rygar.tile_rom_2, rygar.main_ram + BG_RAM_START - RAM_START, 16, 16, 32, 16, bg_scroll_offset);
-  draw_16x16_tilemap(buffer, rygar.palette_cache + 0x200, rygar.tile_rom_1, rygar.main_ram + FG_RAM_START - RAM_START, 16, 16, 32, 16, fg_scroll_offset);
-  draw_32x32_tilemap(buffer, rygar.palette_cache + 0x100, rygar.char_rom, rygar.main_ram + CHAR_RAM_START - RAM_START, 8, 8, 32, 32, 0);
+  tilemap_draw_16x16(buffer, rygar.palette_cache + 0x300, rygar.tile_rom_2, rygar.main_ram + BG_RAM_START - RAM_START, 16, 16, 32, 16, bg_scroll_offset);
+  tilemap_draw_16x16(buffer, rygar.palette_cache + 0x200, rygar.tile_rom_1, rygar.main_ram + FG_RAM_START - RAM_START, 16, 16, 32, 16, fg_scroll_offset);
+  tilemap_draw_32x32(buffer, rygar.palette_cache + 0x100, rygar.char_rom, rygar.main_ram + CHAR_RAM_START - RAM_START, 8, 8, 32, 32);
 }
 
 static void app_init(void) {

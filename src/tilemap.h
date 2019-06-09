@@ -21,12 +21,12 @@ static inline void draw_pixel(
   uint8_t color
 ) {
   // The low and high nibbles represent the bitplane values for each pixel.
-  uint8_t hi = (data >> 4) & 0xf;
+  uint8_t hi = data>>4 & 0xf;
   uint8_t lo = data & 0xf;
 
-  if (hi != TRANSPARENT_PEN) { *dst = palette[(color << 4) | hi]; }
+  if (hi != TRANSPARENT_PEN) { *dst = palette[color<<4 | hi]; }
   dst++;
-  if (lo != TRANSPARENT_PEN) { *dst = palette[(color << 4) | lo]; }
+  if (lo != TRANSPARENT_PEN) { *dst = palette[color<<4 | lo]; }
   dst++;
 }
 
@@ -118,7 +118,7 @@ static void draw_16x16_tilemap_row(
 
     // The tile index is a 10-bit value, represented by the low byte and the
     // three LSBs of the high byte.
-    uint16_t tile_index = ((hi & 0x07) << 8) | lo;
+    uint16_t tile_index = (hi & 0x07)<<8 | lo;
 
     // The four MSBs of the high byte represent the color value.
     uint8_t color = hi>>4;
@@ -132,7 +132,7 @@ static void draw_16x16_tilemap_row(
  *
  * The tilemap is made up of 16x16 pixel tiles.
  */
-void draw_16x16_tilemap(
+void tilemap_draw_16x16(
   uint32_t* dst,
   uint32_t* palette,
   uint8_t* rom,
@@ -151,10 +151,10 @@ void draw_16x16_tilemap(
   /* printf("%i %i %i\n", scroll_offset % 512, first_col, last_col); */
 
   for (int y = 0; y < rows; y++) {
-    if (first_col <= last_col) {
+    if (first_col <= last_col) { // visible area is not wrapping
       ptr = dst + y*DISPLAY_WIDTH*tile_height - first_col*tile_width;
       draw_16x16_tilemap_row(ptr, palette, rom, ram + y*TILE_SIZE, tile_width, tile_height, first_col, last_col);
-    } else {
+    } else { // visible area is wrapping
       ptr = dst + y*DISPLAY_WIDTH*tile_height - first_col*tile_width;
       draw_16x16_tilemap_row(ptr, palette, rom, ram + y*TILE_SIZE, tile_width, tile_height, first_col, cols - 1);
 
@@ -169,7 +169,7 @@ void draw_16x16_tilemap(
  *
  * The tilemap is made up of 8x8 pixel tiles.
  */
-void draw_32x32_tilemap(
+void tilemap_draw_32x32(
   uint32_t* dst,
   uint32_t* palette,
   uint8_t* rom,
@@ -177,8 +177,7 @@ void draw_32x32_tilemap(
   uint8_t tile_width,      // tile width in pixels
   uint8_t tile_height,     // tile height in pixels
   uint8_t cols,            // number of cols in the tilemap
-  uint8_t rows,            // number of rows in the tilemap
-  uint16_t scroll_offset   // scroll offset of the tilemap
+  uint8_t rows             // number of rows in the tilemap
 ) {
   for (int y = 0; y < rows; y++) {
     for (int x = 0; x < cols; x++) {
@@ -190,7 +189,7 @@ void draw_32x32_tilemap(
 
       // The tile index is a 10-bit value, represented by the low byte and the
       // two LSBs of the high byte.
-      uint16_t tile_index = ((hi & 0x03) << 8) | lo;
+      uint16_t tile_index = (hi & 0x03)<<8 | lo;
 
       // The four MSBs of the high byte represent the color value.
       uint8_t color = hi>>4;
