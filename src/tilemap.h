@@ -40,11 +40,11 @@ static void draw_8x8_tile(
   uint32_t* palette,
   uint16_t palette_offset,
   uint8_t* rom,
-  uint16_t index,
+  uint16_t tile_index,
   uint8_t color
 ) {
   for (int y = 0; y < TILE_HEIGHT; y++) {
-    int addr = index*TILE_SIZE + y*NUM_BITPLANES;
+    int addr = tile_index*TILE_SIZE + y*NUM_BITPLANES;
     uint32_t* ptr = dst + y*DISPLAY_WIDTH;
 
     for (int x = 0; x < TILE_WIDTH/2; x++) {
@@ -61,11 +61,11 @@ static void draw_16x16_tile(
   uint32_t* palette,
   uint16_t palette_offset,
   uint8_t* rom,
-  uint16_t index,
+  uint16_t tile_index,
   uint8_t color
 ) {
   for (int y = 0; y < TILE_HEIGHT; y++) {
-    int addr = index*TILE_SIZE*4 + y*NUM_BITPLANES;
+    int addr = tile_index*TILE_SIZE*4 + y*NUM_BITPLANES;
     uint32_t* ptr = dst + y*DISPLAY_WIDTH;
 
     for (int x = 0; x < TILE_WIDTH/2; x++) {
@@ -84,7 +84,7 @@ static void draw_16x16_tile(
   }
 
   for (int y = 0; y < TILE_HEIGHT; y++) {
-    int addr = index*TILE_SIZE*4 + y*NUM_BITPLANES + TILE_SIZE*2;
+    int addr = tile_index*TILE_SIZE*4 + y*NUM_BITPLANES + TILE_SIZE*2;
     uint32_t* ptr = dst + (y+8)*DISPLAY_WIDTH;
 
     for (int x = 0; x < TILE_WIDTH/2; x++) {
