@@ -102,7 +102,7 @@ static void draw_16x16_tile(
 }
 
 /**
- * Draws a 16x16 tilemap.
+ * Draws a 16x16 scrolling tilemap.
  *
  * The tilemap is made up of 16x16 pixel tiles.
  */
@@ -111,7 +111,8 @@ void draw_16x16_tilemap(
   uint32_t* palette,
   uint16_t palette_offset,
   uint8_t* rom,
-  uint8_t* ram
+  uint8_t* ram,
+  uint16_t scroll_offset
 ) {
   for (int y = 0; y < 16; y++) {
     for (int x = 0; x < 16; x++) {
@@ -134,7 +135,7 @@ void draw_16x16_tilemap(
 }
 
 /**
- * Draws a 32x32 tilemap.
+ * Draws a 32x32 static tilemap.
  *
  * The tilemap is made up of 8x8 pixel tiles.
  */

@@ -228,19 +228,24 @@ static void rygar_init(void) {
 static void rygar_exec(uint32_t delta) {
   uint32_t ticks_to_run = clk_ticks_to_run(&rygar.main.clk, delta);
   uint32_t ticks_executed = 0;
+
   while (ticks_executed < ticks_to_run) {
     ticks_executed += z80_exec(&rygar.main.cpu, ticks_to_run);
   }
   clk_ticks_executed(&rygar.main.clk, ticks_executed);
+
+  // Calculate scroll offsets.
+  uint16_t fg_scroll_offset = ((rygar.main.fg_scroll[1] & 0x01) << 8) | rygar.main.fg_scroll[0];
+  uint16_t bg_scroll_offset = ((rygar.main.bg_scroll[1] & 0x01) << 8) | rygar.main.bg_scroll[0];
 
   uint32_t* buffer = gfx_framebuffer();
 
   // Clear buffer.
   memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(buffer[0]));
 
-  // Draw layers.
-  draw_16x16_tilemap(buffer, rygar.palette_cache, 0x300, rygar.tile_rom_2, rygar.main_ram + BG_RAM_START - RAM_START);
-  draw_16x16_tilemap(buffer, rygar.palette_cache, 0x200, rygar.tile_rom_1, rygar.main_ram + FG_RAM_START - RAM_START);
+  // Draw graphics layers.
+  draw_16x16_tilemap(buffer, rygar.palette_cache, 0x300, rygar.tile_rom_2, rygar.main_ram + BG_RAM_START - RAM_START, bg_scroll_offset);
+  draw_16x16_tilemap(buffer, rygar.palette_cache, 0x200, rygar.tile_rom_1, rygar.main_ram + FG_RAM_START - RAM_START, fg_scroll_offset);
   draw_32x32_tilemap(buffer, rygar.palette_cache, 0x100, rygar.char_rom, rygar.main_ram + CHAR_RAM_START - RAM_START);
 }
 
