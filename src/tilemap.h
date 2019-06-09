@@ -16,6 +16,8 @@
 #define DISPLAY_WIDTH 256
 #define DISPLAY_HEIGHT 256
 
+#define TRANSPARENT_PEN 0
+
 static inline void draw_pixel(
   uint32_t* dst,
   uint32_t* palette,
@@ -27,9 +29,9 @@ static inline void draw_pixel(
   uint8_t hi = (data >> 4) & 0xf;
   uint8_t lo = data & 0xf;
 
-  if (hi != 0) { *dst = palette[palette_offset | (color << 4) | hi]; }
+  if (hi != TRANSPARENT_PEN) { *dst = palette[palette_offset | (color << 4) | hi]; }
   dst++;
-  if (lo != 0) { *dst = palette[palette_offset | (color << 4) | lo]; }
+  if (lo != TRANSPARENT_PEN) { *dst = palette[palette_offset | (color << 4) | lo]; }
   dst++;
 }
 
@@ -112,13 +114,15 @@ void draw_16x16_tilemap(
   uint16_t palette_offset,
   uint8_t* rom,
   uint8_t* ram,
-  uint16_t scroll_offset
+  uint8_t cols,            // number of cols in the tilemap
+  uint8_t rows,            // number of rows in the tilemap
+  uint16_t scroll_offset   // scroll offset of the tilemap
 ) {
-  for (int y = 0; y < 16; y++) {
-    for (int x = 0; x < 16; x++) {
-      uint32_t* ptr = dst + y*DISPLAY_WIDTH*16 + x*16;
+  for (int y = 0; y < rows; y++) {
+    for (int x = 0; x < cols; x++) {
+      uint32_t* ptr = dst + y*DISPLAY_WIDTH*TILE_HEIGHT*2 + x*TILE_WIDTH*2;
 
-      int addr = y * TILE_SIZE + x;
+      int addr = y*TILE_SIZE + x;
       uint8_t lo = ram[addr];
       uint8_t hi = ram[addr + 0x200];
 
@@ -144,13 +148,16 @@ void draw_32x32_tilemap(
   uint32_t* palette,
   uint16_t palette_offset,
   uint8_t* rom,
-  uint8_t* ram
+  uint8_t* ram,
+  uint8_t cols,            // number of cols in the tilemap
+  uint8_t rows,            // number of rows in the tilemap
+  uint16_t scroll_offset   // scroll offset of the tilemap
 ) {
-  for (int y = 0; y < 32; y++) {
-    for (int x = 0; x < 32; x++) {
-      uint32_t* ptr = dst + y*DISPLAY_WIDTH*8 + x*8;
+  for (int y = 0; y < rows; y++) {
+    for (int x = 0; x < cols; x++) {
+      uint32_t* ptr = dst + y*DISPLAY_WIDTH*TILE_HEIGHT + x*TILE_WIDTH;
 
-      int addr = y * TILE_SIZE + x;
+      int addr = y*TILE_SIZE + x;
       uint8_t lo = ram[addr];
       uint8_t hi = ram[addr + 0x400];
 
