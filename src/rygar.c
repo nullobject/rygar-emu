@@ -248,9 +248,9 @@ static void rygar_exec(uint32_t delta) {
   memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(buffer[0]));
 
   // Draw graphics layers.
-  draw_16x16_tilemap(buffer, rygar.palette_cache, 0x300, rygar.tile_rom_2, rygar.main_ram + BG_RAM_START - RAM_START, 16, 16, 32, 16, bg_scroll_offset);
-  draw_16x16_tilemap(buffer, rygar.palette_cache, 0x200, rygar.tile_rom_1, rygar.main_ram + FG_RAM_START - RAM_START, 16, 16, 32, 16, fg_scroll_offset);
-  draw_32x32_tilemap(buffer, rygar.palette_cache, 0x100, rygar.char_rom, rygar.main_ram + CHAR_RAM_START - RAM_START, 8, 8, 32, 32, 0);
+  draw_16x16_tilemap(buffer, rygar.palette_cache + 0x300, rygar.tile_rom_2, rygar.main_ram + BG_RAM_START - RAM_START, 16, 16, 32, 16, bg_scroll_offset);
+  draw_16x16_tilemap(buffer, rygar.palette_cache + 0x200, rygar.tile_rom_1, rygar.main_ram + FG_RAM_START - RAM_START, 16, 16, 32, 16, fg_scroll_offset);
+  draw_32x32_tilemap(buffer, rygar.palette_cache + 0x100, rygar.char_rom, rygar.main_ram + CHAR_RAM_START - RAM_START, 8, 8, 32, 32, 0);
 }
 
 static void app_init(void) {

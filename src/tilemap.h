@@ -17,7 +17,6 @@
 static inline void draw_pixel(
   uint32_t* dst,
   uint32_t* palette,
-  uint16_t palette_offset,
   uint32_t data,
   uint8_t color
 ) {
@@ -25,16 +24,15 @@ static inline void draw_pixel(
   uint8_t hi = (data >> 4) & 0xf;
   uint8_t lo = data & 0xf;
 
-  if (hi != TRANSPARENT_PEN) { *dst = palette[palette_offset | (color << 4) | hi]; }
+  if (hi != TRANSPARENT_PEN) { *dst = palette[(color << 4) | hi]; }
   dst++;
-  if (lo != TRANSPARENT_PEN) { *dst = palette[palette_offset | (color << 4) | lo]; }
+  if (lo != TRANSPARENT_PEN) { *dst = palette[(color << 4) | lo]; }
   dst++;
 }
 
 static void draw_8x8_tile(
   uint32_t* dst,
   uint32_t* palette,
-  uint16_t palette_offset,
   uint8_t* rom,
   uint8_t tile_width,      // tile width in pixels
   uint8_t tile_height,     // tile height in pixels
@@ -48,7 +46,7 @@ static void draw_8x8_tile(
     for (int x = 0; x < tile_width/2; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rom[addr + x];
-      draw_pixel(ptr, palette, palette_offset, data, color);
+      draw_pixel(ptr, palette, data, color);
       ptr+=2;
     }
   }
@@ -57,7 +55,6 @@ static void draw_8x8_tile(
 static void draw_16x16_tile(
   uint32_t* dst,
   uint32_t* palette,
-  uint16_t palette_offset,
   uint8_t* rom,
   uint8_t tile_width,      // tile width in pixels
   uint8_t tile_height,     // tile height in pixels
@@ -71,14 +68,14 @@ static void draw_16x16_tile(
     for (int x = 0; x < tile_width/4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rom[addr + x];
-      draw_pixel(ptr, palette, palette_offset, data, color);
+      draw_pixel(ptr, palette, data, color);
       ptr+=2;
     }
 
     for (int x = 0; x < tile_width/4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rom[addr + x + TILE_SIZE];
-      draw_pixel(ptr, palette, palette_offset, data, color);
+      draw_pixel(ptr, palette, data, color);
       ptr+=2;
     }
   }
@@ -90,14 +87,14 @@ static void draw_16x16_tile(
     for (int x = 0; x < tile_width/4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rom[addr + x];
-      draw_pixel(ptr, palette, palette_offset, data, color);
+      draw_pixel(ptr, palette, data, color);
       ptr+=2;
     }
 
     for (int x = 0; x < tile_width/4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
       uint8_t data = rom[addr + x + TILE_SIZE];
-      draw_pixel(ptr, palette, palette_offset, data, color);
+      draw_pixel(ptr, palette, data, color);
       ptr+=2;
     }
   }
@@ -106,7 +103,6 @@ static void draw_16x16_tile(
 static void draw_16x16_tilemap_row(
   uint32_t* dst,
   uint32_t* palette,
-  uint16_t palette_offset,
   uint8_t* rom,
   uint8_t* ram,
   uint8_t tile_width,      // tile width in pixels
@@ -127,7 +123,7 @@ static void draw_16x16_tilemap_row(
     // The four MSBs of the high byte represent the color value.
     uint8_t color = hi>>4;
 
-    draw_16x16_tile(ptr, palette, palette_offset, rom, tile_width, tile_height, tile_index, color);
+    draw_16x16_tile(ptr, palette, rom, tile_width, tile_height, tile_index, color);
   }
 }
 
@@ -139,7 +135,6 @@ static void draw_16x16_tilemap_row(
 void draw_16x16_tilemap(
   uint32_t* dst,
   uint32_t* palette,
-  uint16_t palette_offset,
   uint8_t* rom,
   uint8_t* ram,
   uint8_t tile_width,      // tile width in pixels
@@ -158,13 +153,13 @@ void draw_16x16_tilemap(
   for (int y = 0; y < rows; y++) {
     if (first_col <= last_col) {
       ptr = dst + y*DISPLAY_WIDTH*tile_height - first_col*tile_width;
-      draw_16x16_tilemap_row(ptr, palette, palette_offset, rom, ram + y*TILE_SIZE, tile_width, tile_height, first_col, last_col);
+      draw_16x16_tilemap_row(ptr, palette, rom, ram + y*TILE_SIZE, tile_width, tile_height, first_col, last_col);
     } else {
       ptr = dst + y*DISPLAY_WIDTH*tile_height - first_col*tile_width;
-      draw_16x16_tilemap_row(ptr, palette, palette_offset, rom, ram + y*TILE_SIZE, tile_width, tile_height, first_col, cols - 1);
+      draw_16x16_tilemap_row(ptr, palette, rom, ram + y*TILE_SIZE, tile_width, tile_height, first_col, cols - 1);
 
       ptr = dst + y*DISPLAY_WIDTH*tile_height + (cols - first_col)*tile_width;
-      draw_16x16_tilemap_row(ptr, palette, palette_offset, rom, ram + y*TILE_SIZE, tile_width, tile_height, 0, last_col);
+      draw_16x16_tilemap_row(ptr, palette, rom, ram + y*TILE_SIZE, tile_width, tile_height, 0, last_col);
     }
   }
 }
@@ -177,7 +172,6 @@ void draw_16x16_tilemap(
 void draw_32x32_tilemap(
   uint32_t* dst,
   uint32_t* palette,
-  uint16_t palette_offset,
   uint8_t* rom,
   uint8_t* ram,
   uint8_t tile_width,      // tile width in pixels
@@ -201,7 +195,7 @@ void draw_32x32_tilemap(
       // The four MSBs of the high byte represent the color value.
       uint8_t color = hi>>4;
 
-      draw_8x8_tile(ptr, palette, palette_offset, rom, tile_width, tile_height, tile_index, color);
+      draw_8x8_tile(ptr, palette, rom, tile_width, tile_height, tile_index, color);
     }
   }
 }
