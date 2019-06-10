@@ -165,10 +165,12 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
       if (BETWEEN(addr, RAM_START, RAM_END)) {
         mem_wr(&rygar.main.mem, addr, data);
 
-        if (BETWEEN(addr, FG_RAM_START, FG_RAM_END)) {
-          tilemap_mark_tile_dirty(&rygar.fg_tilemap, addr - FG_RAM_START);
+        if (BETWEEN(addr, CHAR_RAM_START, CHAR_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.char_tilemap, (addr - CHAR_RAM_START) & 0x3ff);
+        } else if (BETWEEN(addr, FG_RAM_START, FG_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.fg_tilemap, (addr - FG_RAM_START) & 0x1ff);
         } else if (BETWEEN(addr, BG_RAM_START, BG_RAM_END)) {
-          tilemap_mark_tile_dirty(&rygar.bg_tilemap, addr - BG_RAM_START);
+          tilemap_mark_tile_dirty(&rygar.bg_tilemap, (addr - BG_RAM_START) & 0x1ff);
         } else if (BETWEEN(addr, PALETTE_RAM_START, PALETTE_RAM_END)) {
           rygar_update_palette_cache(addr - PALETTE_RAM_START, data);
         }
@@ -201,12 +203,25 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
   return pins;
 }
 
+static void char_tile_info(tile_t* tile, uint16_t index) {
+  uint8_t* ram = rygar.main_ram + CHAR_RAM_START - RAM_START;
+  uint8_t lo = ram[index];
+  uint8_t hi = ram[index + 0x400];
+
+  // The tile code is a 10-bit value, represented by the low byte and the two
+  // LSBs of the high byte.
+  tile->code = (hi & 0x03)<<8 | lo;
+
+  // The four MSBs of the high byte represent the color value.
+  tile->color = hi>>4;
+}
+
 static void fg_tile_info(tile_t* tile, uint16_t index) {
   uint8_t* ram = rygar.main_ram + FG_RAM_START - RAM_START;
   uint8_t lo = ram[index];
   uint8_t hi = ram[index + 0x200];
 
-  // The tile code is a 10-bit value, represented by the low byte and the three
+  // The tile code is a 11-bit value, represented by the low byte and the three
   // LSBs of the high byte.
   tile->code = (hi & 0x07)<<8 | lo;
 
@@ -219,7 +234,7 @@ static void bg_tile_info(tile_t* tile, uint16_t index) {
   uint8_t lo = ram[index];
   uint8_t hi = ram[index + 0x200];
 
-  // The tile code is a 10-bit value, represented by the low byte and the three
+  // The tile code is a 11-bit value, represented by the low byte and the three
   // LSBs of the high byte.
   tile->code = (hi & 0x07)<<8 | lo;
 
@@ -268,6 +283,15 @@ static void rygar_init(void) {
   memcpy(&rygar.tile_rom_2[0x10000], dump_vid_6c, 0x8000);
   memcpy(&rygar.tile_rom_2[0x18000], dump_vid_6b, 0x8000);
 
+  tilemap_init(&rygar.char_tilemap, &(tilemap_desc_t) {
+    .tile_cb = char_tile_info,
+    .rom = rygar.char_rom,
+    .tile_width = 8,
+    .tile_height = 8,
+    .cols = 32,
+    .rows = 32
+  });
+
   tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t) {
     .tile_cb = fg_tile_info,
     .rom = rygar.tile_rom_1,
@@ -307,7 +331,7 @@ static void rygar_exec(uint32_t delta) {
   // Draw graphics layers.
   tilemap_draw(&rygar.bg_tilemap, buffer, rygar.palette_cache + 0x300);
   tilemap_draw(&rygar.fg_tilemap, buffer, rygar.palette_cache + 0x200);
-  tilemap_draw_32x32(buffer, rygar.palette_cache + 0x100, rygar.char_rom, rygar.main_ram + CHAR_RAM_START - RAM_START, 8, 8, 32, 32);
+  tilemap_draw(&rygar.char_tilemap, buffer, rygar.palette_cache + 0x100);
 }
 
 static void app_init(void) {
