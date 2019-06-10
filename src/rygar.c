@@ -19,14 +19,24 @@
 #define SPRITE_ROM_SIZE 0x20000
 #define TILE_ROM_SIZE 0x20000
 
+#define TX_RAM_SIZE 0x800
 #define TX_RAM_START 0xd000
+
+#define FG_RAM_SIZE 0x400
 #define FG_RAM_START 0xd800
+
+#define BG_RAM_SIZE 0x400
 #define BG_RAM_START 0xdc00
+
+#define SPRITE_RAM_SIZE 0x800
 #define SPRITE_RAM_START 0xe000
 
 #define PALETTE_RAM_SIZE 0x800
 #define PALETTE_RAM_START 0xe800
 #define PALETTE_RAM_END (PALETTE_RAM_START + PALETTE_RAM_SIZE - 1)
+
+#define MAIN_RAM_SIZE 0x1000
+#define MAIN_RAM_START 0xc000
 
 #define RAM_SIZE 0x3000
 #define RAM_START 0xc000
@@ -70,7 +80,12 @@ typedef struct {
 
 typedef struct {
   mainboard_t main;
-  uint8_t main_ram[RAM_SIZE];
+  uint8_t main_ram[MAIN_RAM_SIZE];
+  uint8_t tx_ram[TX_RAM_SIZE];
+  uint8_t fg_ram[FG_RAM_SIZE];
+  uint8_t bg_ram[BG_RAM_SIZE];
+  uint8_t sprite_ram[SPRITE_RAM_SIZE];
+  uint8_t palette_ram[PALETTE_RAM_SIZE];
   uint8_t main_bank[BANK_SIZE];
   uint8_t tx_rom[TX_ROM_SIZE];
   uint8_t sprite_rom[SPRITE_ROM_SIZE];
@@ -120,7 +135,7 @@ static inline void rygar_update_palette_cache(uint16_t addr, uint8_t data) {
  * d800-dbff FG VIDEO RAM
  * dc00-dfff BG VIDEO RAM
  * e000-e7ff SPRITE RAM
- * e800-efff PALETTE
+ * e800-efff PALETTE RAM
  * f000-f7ff WINDOW FOR BANKED ROM
  * f800-ffff ?
  *
@@ -193,9 +208,8 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
 }
 
 static void tx_tile_info(tile_t* tile, uint16_t index) {
-  uint8_t* ram = rygar.main_ram + TX_RAM_START - RAM_START;
-  uint8_t lo = ram[index];
-  uint8_t hi = ram[index + 0x400];
+  uint8_t lo = rygar.tx_ram[index];
+  uint8_t hi = rygar.tx_ram[index + 0x400];
 
   // The tile code is a 10-bit value, represented by the low byte and the two
   // LSBs of the high byte.
@@ -206,9 +220,8 @@ static void tx_tile_info(tile_t* tile, uint16_t index) {
 }
 
 static void fg_tile_info(tile_t* tile, uint16_t index) {
-  uint8_t* ram = rygar.main_ram + FG_RAM_START - RAM_START;
-  uint8_t lo = ram[index];
-  uint8_t hi = ram[index + 0x200];
+  uint8_t lo = rygar.fg_ram[index];
+  uint8_t hi = rygar.fg_ram[index + 0x200];
 
   // The tile code is a 11-bit value, represented by the low byte and the three
   // LSBs of the high byte.
@@ -219,9 +232,8 @@ static void fg_tile_info(tile_t* tile, uint16_t index) {
 }
 
 static void bg_tile_info(tile_t* tile, uint16_t index) {
-  uint8_t* ram = rygar.main_ram + BG_RAM_START - RAM_START;
-  uint8_t lo = ram[index];
-  uint8_t hi = ram[index + 0x200];
+  uint8_t lo = rygar.bg_ram[index];
+  uint8_t hi = rygar.bg_ram[index + 0x200];
 
   // The tile code is a 11-bit value, represented by the low byte and the three
   // LSBs of the high byte.
@@ -246,7 +258,12 @@ static void rygar_init(void) {
   mem_init(&rygar.main.mem);
   mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
   mem_map_rom(&rygar.main.mem, 0, 0x8000, 0x4000, dump_cpu_5m);
-  mem_map_ram(&rygar.main.mem, 0, RAM_START, RAM_SIZE, rygar.main_ram);
+  mem_map_ram(&rygar.main.mem, 0, MAIN_RAM_START, MAIN_RAM_SIZE, rygar.main_ram);
+  mem_map_ram(&rygar.main.mem, 0, TX_RAM_START, TX_RAM_SIZE, rygar.tx_ram);
+  mem_map_ram(&rygar.main.mem, 0, FG_RAM_START, FG_RAM_SIZE, rygar.fg_ram);
+  mem_map_ram(&rygar.main.mem, 0, BG_RAM_START, BG_RAM_SIZE, rygar.bg_ram);
+  mem_map_ram(&rygar.main.mem, 0, SPRITE_RAM_START, SPRITE_RAM_SIZE, rygar.sprite_ram);
+  mem_map_ram(&rygar.main.mem, 0, PALETTE_RAM_START, PALETTE_RAM_SIZE, rygar.palette_ram);
 
   // banked ROM at f000-f7ff
   memcpy(&rygar.main_bank[0x00000], dump_cpu_5j, 0x8000);
