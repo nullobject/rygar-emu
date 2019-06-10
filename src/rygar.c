@@ -5,10 +5,10 @@
 #define COMMON_IMPL
 
 #include "chips/clk.h"
-#include "chips/mem.h"
 #include "chips/z80.h"
 #include "clock.h"
 #include "gfx.h"
+#include "mem.h"
 #include "rygar-roms.h"
 #include "sokol_app.h"
 #include "tilemap.h"
@@ -87,10 +87,10 @@ typedef struct {
   uint8_t current_bank;
 
   // gfx roms
-  uint8_t tx_rom[TX_ROM_SIZE];
-  uint8_t fg_rom[FG_ROM_SIZE];
-  uint8_t bg_rom[BG_ROM_SIZE];
-  uint8_t sprite_rom[SPRITE_ROM_SIZE];
+  mem_t tx_rom;
+  mem_t fg_rom;
+  mem_t bg_rom;
+  mem_t sprite_rom;
 
   // tilemap scroll offset registers
   uint8_t fg_scroll[3];
@@ -269,29 +269,29 @@ static void rygar_init() {
   memcpy(&rygar.main.banked_rom[0x00000], dump_cpu_5j, 0x8000);
 
   // tx rom
-  memcpy(&rygar.main.tx_rom[0x00000], dump_cpu_8k, 0x8000);
+  mem_map_rom(&rygar.main.tx_rom, 0, 0x00000, 0x8000, dump_cpu_8k);
 
   // foreground rom
-  memcpy(&rygar.main.fg_rom[0x00000], dump_vid_6p, 0x8000);
-  memcpy(&rygar.main.fg_rom[0x08000], dump_vid_6o, 0x8000);
-  memcpy(&rygar.main.fg_rom[0x10000], dump_vid_6n, 0x8000);
-  memcpy(&rygar.main.fg_rom[0x18000], dump_vid_6l, 0x8000);
+  mem_map_rom(&rygar.main.fg_rom, 0, 0x00000, 0x8000, dump_vid_6p);
+  mem_map_rom(&rygar.main.fg_rom, 0, 0x08000, 0x8000, dump_vid_6o);
+  mem_map_rom(&rygar.main.fg_rom, 0, 0x10000, 0x8000, dump_vid_6n);
+  mem_map_rom(&rygar.main.fg_rom, 0, 0x18000, 0x8000, dump_vid_6l);
 
   // background rom
-  memcpy(&rygar.main.bg_rom[0x00000], dump_vid_6f, 0x8000);
-  memcpy(&rygar.main.bg_rom[0x08000], dump_vid_6e, 0x8000);
-  memcpy(&rygar.main.bg_rom[0x10000], dump_vid_6c, 0x8000);
-  memcpy(&rygar.main.bg_rom[0x18000], dump_vid_6b, 0x8000);
+  mem_map_rom(&rygar.main.bg_rom, 0, 0x00000, 0x8000, dump_vid_6f);
+  mem_map_rom(&rygar.main.bg_rom, 0, 0x08000, 0x8000, dump_vid_6e);
+  mem_map_rom(&rygar.main.bg_rom, 0, 0x10000, 0x8000, dump_vid_6c);
+  mem_map_rom(&rygar.main.bg_rom, 0, 0x18000, 0x8000, dump_vid_6b);
 
   // sprite rom
-  memcpy(&rygar.main.sprite_rom[0x00000], dump_vid_6k, 0x8000);
-  memcpy(&rygar.main.sprite_rom[0x08000], dump_vid_6j, 0x8000);
-  memcpy(&rygar.main.sprite_rom[0x10000], dump_vid_6h, 0x8000);
-  memcpy(&rygar.main.sprite_rom[0x18000], dump_vid_6g, 0x8000);
+  mem_map_rom(&rygar.main.sprite_rom, 0, 0x00000, 0x8000, dump_vid_6k);
+  mem_map_rom(&rygar.main.sprite_rom, 0, 0x08000, 0x8000, dump_vid_6j);
+  mem_map_rom(&rygar.main.sprite_rom, 0, 0x10000, 0x8000, dump_vid_6h);
+  mem_map_rom(&rygar.main.sprite_rom, 0, 0x18000, 0x8000, dump_vid_6g);
 
   tilemap_init(&rygar.tx_tilemap, &(tilemap_desc_t) {
     .tile_cb = tx_tile_info,
-    .rom = rygar.main.tx_rom,
+    .rom = &rygar.main.tx_rom,
     .tile_width = 8,
     .tile_height = 8,
     .cols = 32,
@@ -300,7 +300,7 @@ static void rygar_init() {
 
   tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t) {
     .tile_cb = fg_tile_info,
-    .rom = rygar.main.fg_rom,
+    .rom = &rygar.main.fg_rom,
     .tile_width = 16,
     .tile_height = 16,
     .cols = 32,
@@ -309,7 +309,7 @@ static void rygar_init() {
 
   tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t) {
     .tile_cb = bg_tile_info,
-    .rom = rygar.main.bg_rom,
+    .rom = &rygar.main.bg_rom,
     .tile_width = 16,
     .tile_height = 16,
     .cols = 32,

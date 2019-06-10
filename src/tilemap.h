@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mem.h"
+
 // The number of bitplanes that define the pixel data for the 8x8 tiles.
 #define NUM_BITPLANES 4
 
@@ -29,7 +31,7 @@ typedef struct {
 } tile_t;
 
 typedef struct {
-  uint8_t* rom;
+  mem_t* rom;
   uint8_t tile_width;
   uint8_t tile_height;
   uint8_t rows;
@@ -38,7 +40,7 @@ typedef struct {
 } tilemap_desc_t;
 
 typedef struct {
-  uint8_t* rom;
+  mem_t* rom;
   uint8_t tile_width;
   uint8_t tile_height;
   uint8_t rows;
@@ -69,7 +71,7 @@ static void tilemap_draw_8x8_tile(tilemap_t* tilemap, tile_t* tile, uint8_t col,
 
     for (int x = 0; x < 4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x];
+      uint8_t data = mem_rd(tilemap->rom, base_addr + x);
       tilemap_draw_pixel(ptr, data, tile->color);
       ptr+=2;
     }
@@ -87,14 +89,14 @@ static void tilemap_draw_16x16_tile(tilemap_t* tilemap, tile_t* tile, uint8_t co
 
     for (int x = 0; x < tilemap->tile_width/4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x];
+      uint8_t data = mem_rd(tilemap->rom, base_addr + x);
       tilemap_draw_pixel(ptr, data, tile->color);
       ptr+=2;
     }
 
     for (int x = 0; x < tilemap->tile_width/4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x + TILE_SIZE];
+      uint8_t data = mem_rd(tilemap->rom, base_addr + x + TILE_SIZE);
       tilemap_draw_pixel(ptr, data, tile->color);
       ptr+=2;
     }
@@ -106,14 +108,14 @@ static void tilemap_draw_16x16_tile(tilemap_t* tilemap, tile_t* tile, uint8_t co
 
     for (int x = 0; x < tilemap->tile_width/4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x];
+      uint8_t data = mem_rd(tilemap->rom, base_addr + x);
       tilemap_draw_pixel(ptr, data, tile->color);
       ptr+=2;
     }
 
     for (int x = 0; x < tilemap->tile_width/4; x++) {
       // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x + TILE_SIZE];
+      uint8_t data = mem_rd(tilemap->rom, base_addr + x + TILE_SIZE);
       tilemap_draw_pixel(ptr, data, tile->color);
       ptr+=2;
     }
