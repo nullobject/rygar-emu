@@ -19,10 +19,21 @@
 #define SPRITE_ROM_SIZE 0x20000
 #define TILE_ROM_SIZE 0x20000
 
+#define CHAR_RAM_SIZE 0x800
 #define CHAR_RAM_START 0xd000
+#define CHAR_RAM_END (CHAR_RAM_START + CHAR_RAM_SIZE - 1)
+
+#define FG_RAM_SIZE 0x400
 #define FG_RAM_START 0xd800
+#define FG_RAM_END (FG_RAM_START + FG_RAM_SIZE - 1)
+
+#define BG_RAM_SIZE 0x400
 #define BG_RAM_START 0xdc00
+#define BG_RAM_END (BG_RAM_START + BG_RAM_SIZE - 1)
+
+#define SPRITE_RAM_SIZE 0x800
 #define SPRITE_RAM_START 0xe000
+#define SPRITE_RAM_END (SPRITE_RAM_START + SPRITE_RAM_SIZE - 1)
 
 #define PALETTE_RAM_SIZE 0x800
 #define PALETTE_RAM_START 0xe800
@@ -94,9 +105,7 @@ rygar_t rygar;
  * pixel in the video decoding code.
  */
 static inline void rygar_update_palette_cache(uint16_t addr, uint8_t data) {
-  assert((addr >= PALETTE_RAM_START) && (addr <= PALETTE_RAM_END));
-
-  uint16_t pal_index = (addr - PALETTE_RAM_START) / 2;
+  uint16_t pal_index = addr>>1;
   uint32_t c = rygar.palette_cache[pal_index];
 
   if (addr & 1) {
@@ -156,9 +165,12 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
       if (BETWEEN(addr, RAM_START, RAM_END)) {
         mem_wr(&rygar.main.mem, addr, data);
 
-        // Update the palette cache if we're writing to the palette RAM.
-        if (BETWEEN(addr, PALETTE_RAM_START, PALETTE_RAM_END)) {
-          rygar_update_palette_cache(addr, data);
+        if (BETWEEN(addr, FG_RAM_START, FG_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.fg_tilemap, addr - FG_RAM_START);
+        } else if (BETWEEN(addr, BG_RAM_START, BG_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.bg_tilemap, addr - BG_RAM_START);
+        } else if (BETWEEN(addr, PALETTE_RAM_START, PALETTE_RAM_END)) {
+          rygar_update_palette_cache(addr - PALETTE_RAM_START, data);
         }
       } else if (BETWEEN(addr, FG_SCROLL_START, FG_SCROLL_END)) {
         uint8_t offset = addr - FG_SCROLL_START;

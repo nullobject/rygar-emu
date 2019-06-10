@@ -20,9 +20,12 @@
 #define MAX_COLS 32
 #define MAX_TILES (MAX_COLS * MAX_ROWS)
 
+#define TILE_DIRTY 0x01
+
 typedef struct {
   uint16_t code;
   uint8_t color;
+  uint8_t flags;
 } tile_t;
 
 typedef struct {
@@ -132,6 +135,10 @@ void tilemap_init(tilemap_t* tilemap, const tilemap_desc_t* desc) {
   tilemap->tile_cb = desc->tile_cb;
 }
 
+void tilemap_mark_tile_dirty(tilemap_t* tilemap, const uint16_t index) {
+  tilemap->tiles[index].flags |= TILE_DIRTY;
+}
+
 void tilemap_set_scroll_x(tilemap_t* tilemap, const uint16_t value) {
   tilemap->scroll_offset = value;
 }
@@ -195,6 +202,8 @@ static void tilemap_draw_16x16_tile(tilemap_t* tilemap, tile_t* tile, uint8_t co
       ptr+=2;
     }
   }
+
+  tile->flags ^= TILE_DIRTY;
 }
 
 void tilemap_draw(tilemap_t* tilemap, uint32_t* dst, uint32_t* palette) {
@@ -202,8 +211,11 @@ void tilemap_draw(tilemap_t* tilemap, uint32_t* dst, uint32_t* palette) {
     for (int col = 0; col < tilemap->cols; col++) {
       uint16_t index = row*tilemap->cols + col;
       tile_t* tile = &tilemap->tiles[index];
-      tilemap->tile_cb(tile, index);
-      tilemap_draw_16x16_tile(tilemap, tile, col, row);
+
+      if (tile->flags & TILE_DIRTY) {
+        tilemap->tile_cb(tile, index);
+        tilemap_draw_16x16_tile(tilemap, tile, col, row);
+      }
     }
   }
 
