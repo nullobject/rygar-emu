@@ -12,9 +12,11 @@
 #define DISPLAY_WIDTH 256
 #define DISPLAY_HEIGHT 256
 
+// Pixels drawn with this pen will be marked as transparent.
 #define TRANSPARENT_PEN 0
 
-#define BUFFER_SIZE 0x20000
+// The size of the pixel buffer.
+#define BUFFER_SIZE (DISPLAY_WIDTH*DISPLAY_HEIGHT*2)
 
 #define MAX_ROWS 32
 #define MAX_COLS 32
@@ -45,7 +47,7 @@ typedef struct {
   uint8_t cols;
   uint16_t width;
   uint16_t height;
-  uint16_t scroll_offset;
+  uint16_t scroll_x;
   uint16_t buffer[BUFFER_SIZE];
   tile_t tiles[MAX_TILES];
   void (*tile_cb)(tile_t* tile, uint16_t index);
@@ -140,7 +142,7 @@ void tilemap_mark_tile_dirty(tilemap_t* tilemap, const uint16_t index) {
 }
 
 void tilemap_set_scroll_x(tilemap_t* tilemap, const uint16_t value) {
-  tilemap->scroll_offset = value;
+  tilemap->scroll_x = value;
 }
 
 static inline void draw_pixel_2(uint16_t* dst, uint8_t data, uint8_t color) {
@@ -223,7 +225,7 @@ void tilemap_draw(tilemap_t* tilemap, uint32_t* dst, uint32_t* palette) {
     for (int x = 0; x < DISPLAY_WIDTH; x++) {
       // Calculate the wrapped x coordinate in tilemap space. Wrapping occurs
       // when the visible area is outside of the tilemap.
-      uint32_t wrapped_x = (x + tilemap->scroll_offset) & (tilemap->width - 1);
+      uint32_t wrapped_x = (x + tilemap->scroll_x) & (tilemap->width - 1);
       uint32_t addr = y*tilemap->width + wrapped_x;
       uint16_t pixel = tilemap->buffer[addr];
       if (!(pixel & 0xf000)) { *dst = palette[pixel]; }
