@@ -74,6 +74,8 @@ static void tilemap_draw_8x8_tile(tilemap_t* tilemap, tile_t* tile, uint8_t col,
       ptr+=2;
     }
   }
+
+  tile->flags ^= TILE_DIRTY;
 }
 
 static void tilemap_draw_16x16_tile(tilemap_t* tilemap, tile_t* tile, uint8_t col, uint8_t row) {
