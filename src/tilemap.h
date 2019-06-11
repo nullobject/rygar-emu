@@ -22,6 +22,7 @@
 
 #define MAX_TILES 1024
 
+// tile flags
 #define TILE_DIRTY 0x01
 
 typedef struct {
@@ -32,24 +33,44 @@ typedef struct {
 
 typedef struct {
   mem_t* rom;
+
+  // tile dimensions
   uint8_t tile_width;
   uint8_t tile_height;
+
+  // number of rows/cols
   uint8_t rows;
   uint8_t cols;
+
+  // tile info callback
   void (*tile_cb)(tile_t* tile, uint16_t index);
 } tilemap_desc_t;
 
 typedef struct {
   mem_t* rom;
+
+  // tile dimensions
   uint8_t tile_width;
   uint8_t tile_height;
-  uint8_t rows;
-  uint8_t cols;
+
+  // tilemap dimensions
   uint16_t width;
   uint16_t height;
+
+  // number of rows/cols
+  uint8_t rows;
+  uint8_t cols;
+
+  // scroll offset
   uint16_t scroll_x;
+
+  // pixel buffer
   uint16_t buffer[BUFFER_SIZE];
+
+  // tile
   tile_t tiles[MAX_TILES];
+
+  // tile info callback
   void (*tile_cb)(tile_t* tile, uint16_t index);
 } tilemap_t;
 

@@ -271,13 +271,13 @@ static void rygar_init() {
   // tx rom
   mem_map_rom(&rygar.main.tx_rom, 0, 0x00000, 0x8000, dump_cpu_8k);
 
-  // foreground rom
+  // fg rom
   mem_map_rom(&rygar.main.fg_rom, 0, 0x00000, 0x8000, dump_vid_6p);
   mem_map_rom(&rygar.main.fg_rom, 0, 0x08000, 0x8000, dump_vid_6o);
   mem_map_rom(&rygar.main.fg_rom, 0, 0x10000, 0x8000, dump_vid_6n);
   mem_map_rom(&rygar.main.fg_rom, 0, 0x18000, 0x8000, dump_vid_6l);
 
-  // background rom
+  // bg rom
   mem_map_rom(&rygar.main.bg_rom, 0, 0x00000, 0x8000, dump_vid_6f);
   mem_map_rom(&rygar.main.bg_rom, 0, 0x08000, 0x8000, dump_vid_6e);
   mem_map_rom(&rygar.main.bg_rom, 0, 0x10000, 0x8000, dump_vid_6c);
