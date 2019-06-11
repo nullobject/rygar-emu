@@ -11,6 +11,7 @@
 #include "mem.h"
 #include "rygar-roms.h"
 #include "sokol_app.h"
+#include "sprite.h"
 #include "tilemap.h"
 
 #define BETWEEN(n, a, b) ((n >= a) && (n <= b))
@@ -338,6 +339,7 @@ static void rygar_exec(uint32_t delta) {
   tilemap_draw(&rygar.bg_tilemap, buffer, rygar.palette_cache + 0x300, 3);
   tilemap_draw(&rygar.fg_tilemap, buffer, rygar.palette_cache + 0x200, 2);
   tilemap_draw(&rygar.tx_tilemap, buffer, rygar.palette_cache + 0x100, 1);
+  sprite_draw(buffer, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
 }
 
 static void app_init() {

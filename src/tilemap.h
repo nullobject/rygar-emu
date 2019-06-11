@@ -166,6 +166,9 @@ void tilemap_set_scroll_x(tilemap_t* tilemap, const uint16_t value) {
   tilemap->scroll_x = value;
 }
 
+/**
+ * Draws the tilemap to the given buffer.
+ */
 void tilemap_draw(tilemap_t* tilemap, uint32_t* dst, uint32_t* palette, uint8_t layer) {
   for (int row = 0; row < tilemap->rows; row++) {
     for (int col = 0; col < tilemap->cols; col++) {
