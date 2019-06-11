@@ -29,15 +29,20 @@ static const uint8_t layout[8][8] = {
   { 42, 43, 46, 47, 58, 59, 62, 63 }
 };
 
-static void sprite_draw_8x8_tile(uint32_t* buffer, uint16_t sx, uint16_t sy) {
+static void sprite_draw_8x8_tile(uint32_t* buffer, mem_t* rom, uint16_t code, uint8_t color, uint16_t sx, uint16_t sy) {
   uint32_t* dst = buffer + sy*DISPLAY_WIDTH + sx;
 
   for (int y = 0; y < 8; y++) {
+    int base_addr = code*TILE_SIZE + y*NUM_BITPLANES;
     uint32_t* ptr = dst + y*DISPLAY_WIDTH;
 
     for (int x = 0; x < 4; x++) {
-      *ptr++ = 0xff0000ff;
-      *ptr++ = 0xff0000ff;
+      // Each byte in the char ROM contains the bitplane values for two pixels.
+      uint8_t data = mem_rd(rom, base_addr + x);
+      uint8_t hi = data>>4 & 0xf;
+      uint8_t lo = data & 0xf;
+      *ptr++ = 0xff000000 | (hi << 21) | (hi << 13) | (hi << 5);
+      *ptr++ = 0xff000000 | (lo << 21) | (lo << 13) | (lo << 5);
     }
   }
 }
@@ -69,25 +74,27 @@ void sprite_draw(uint32_t* dst, uint8_t* ram, mem_t* rom) {
     bool visible = ram[addr] & 0x04;
 
 		if (visible) {
-      uint8_t bank = ram[addr] & 0xf0;
+      uint8_t bank = ram[addr];
       uint16_t code = ram[addr+1];
       uint8_t size = ram[addr+2] & 0x03;
 
-      code |= bank << 4;
+      code |= (bank & 0xf0) << 4;
       code &= ~((1 << (size*2)) - 1);
       size = 1 << size; // 8x8, 16x16, 32x32, 64x64
 
       uint8_t flags = ram[addr+3];
 			uint16_t xpos = ram[addr+5] - ((flags & 0x10) << 0x04);
 			uint16_t ypos = ram[addr+4] - ((flags & 0x20) << 0x03);
-			uint8_t flipx = ram[addr] & 0x01;
-			uint8_t flipy = ram[addr] & 0x02;
+
+			uint8_t flipx = bank & 0x01;
+			uint8_t flipy = bank & 0x02;
+      uint8_t color = flags & 0x0f;
 
       for (int y = 0; y < size; y++) {
         for (int x = 0; x < size; x++) {
           int sx = xpos + 8*(flipx?(size-1-x):x);
           int sy = ypos + 8*(flipy?(size-1-y):y);
-          sprite_draw_8x8_tile(dst, sx, sy);
+          sprite_draw_8x8_tile(dst, rom, code + layout[y][x], color, sx, sy);
         }
       }
     }
