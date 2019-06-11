@@ -335,9 +335,9 @@ static void rygar_exec(uint32_t delta) {
   memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(buffer[0]));
 
   // Draw graphics layers.
-  tilemap_draw(&rygar.bg_tilemap, buffer, rygar.palette_cache + 0x300);
-  tilemap_draw(&rygar.fg_tilemap, buffer, rygar.palette_cache + 0x200);
-  tilemap_draw(&rygar.tx_tilemap, buffer, rygar.palette_cache + 0x100);
+  tilemap_draw(&rygar.bg_tilemap, buffer, rygar.palette_cache + 0x300, 3);
+  tilemap_draw(&rygar.fg_tilemap, buffer, rygar.palette_cache + 0x200, 2);
+  tilemap_draw(&rygar.tx_tilemap, buffer, rygar.palette_cache + 0x100, 1);
 }
 
 static void app_init() {
