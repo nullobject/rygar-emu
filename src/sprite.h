@@ -36,15 +36,26 @@ static void sprite_draw_8x8_tile(uint32_t* buffer, uint32_t* palette, mem_t* rom
     int base_addr = code*TILE_SIZE + y*NUM_BITPLANES;
     uint32_t* ptr = dst + y*DISPLAY_WIDTH;
 
-    for (int x = 0; x < 4; x++) {
-      // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = mem_rd(rom, base_addr + x);
-      uint8_t hi = data>>4 & 0xf;
-      uint8_t lo = data & 0xf;
-      if (hi) { *ptr = palette[color<<4|hi]; }
-      *ptr++;
-      if (lo) { *ptr = palette[color<<4|lo]; }
-      *ptr++;
+    if (!flipx) {
+      for (int x = 0; (x < 4) && (sx + x < DISPLAY_WIDTH); x++) {
+        uint8_t data = mem_rd(rom, base_addr + x);
+        uint8_t hi = data>>4 & 0xf;
+        uint8_t lo = data & 0xf;
+        if (hi) { *ptr = palette[color<<4|hi]; }
+        *ptr++;
+        if (lo) { *ptr = palette[color<<4|lo]; }
+        *ptr++;
+      }
+    } else {
+      for (int x = 3; (x >= 0) && (x + sx < DISPLAY_WIDTH); x--) {
+        uint8_t data = mem_rd(rom, base_addr + x);
+        uint8_t hi = data>>4 & 0xf;
+        uint8_t lo = data & 0xf;
+        if (lo) { *ptr = palette[color<<4|lo]; }
+        *ptr++;
+        if (hi) { *ptr = palette[color<<4|hi]; }
+        *ptr++;
+      }
     }
   }
 }
@@ -54,7 +65,7 @@ static void sprite_draw_8x8_tile(uint32_t* buffer, uint32_t* palette, mem_t* rom
  *
  * The sprites are stored in the following format:
  *
- *  byte     bit        usage
+ *  byte     bit        description
  * --------+-76543210-+----------------
  *       0 | xxxx---- | bank
  *         | -----x-- | visible
@@ -81,8 +92,13 @@ void sprite_draw(uint32_t* dst, uint32_t* palette, uint8_t* ram, mem_t* rom) {
       uint8_t size = ram[addr+2] & 0x03;
 
       code |= (bank & 0xf0) << 4;
+
+      // Ensure the lower bits are masked out for the diffrent sizes (8x8,
+      // 16x16, 32x32, 64x64). This is required because we add a tile code
+      // offset for each tile in the different sizes.
       code &= ~((1 << (size*2)) - 1);
-      size = 1 << size; // 8x8, 16x16, 32x32, 64x64
+
+      size = 1 << size;
 
       uint8_t flags = ram[addr+3];
 			uint16_t xpos = ram[addr+5] - ((flags & 0x10) << 0x04);
