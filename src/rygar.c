@@ -23,12 +23,15 @@
 
 #define TX_RAM_SIZE 0x800
 #define TX_RAM_START 0xd000
+#define TX_RAM_END (TX_RAM_START + TX_RAM_SIZE - 1)
 
 #define FG_RAM_SIZE 0x400
 #define FG_RAM_START 0xd800
+#define FG_RAM_END (FG_RAM_START + FG_RAM_SIZE - 1)
 
 #define BG_RAM_SIZE 0x400
 #define BG_RAM_START 0xdc00
+#define BG_RAM_END (BG_RAM_START + BG_RAM_SIZE - 1)
 
 #define SPRITE_RAM_SIZE 0x800
 #define SPRITE_RAM_START 0xe000
@@ -170,12 +173,12 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
       if (BETWEEN(addr, RAM_START, RAM_END)) {
         mem_wr(&rygar.main.mem, addr, data);
 
-        if (BETWEEN(addr, TX_RAM_START, TX_RAM_START + 0x400)) {
-          tilemap_mark_tile_dirty(&rygar.tx_tilemap, addr - TX_RAM_START);
-        } else if (BETWEEN(addr, FG_RAM_START, FG_RAM_START + 0x200)) {
-          tilemap_mark_tile_dirty(&rygar.fg_tilemap, addr - FG_RAM_START);
-        } else if (BETWEEN(addr, BG_RAM_START, BG_RAM_START + 0x200)) {
-          tilemap_mark_tile_dirty(&rygar.bg_tilemap, addr - BG_RAM_START);
+        if (BETWEEN(addr, TX_RAM_START, TX_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.tx_tilemap, (addr - TX_RAM_START) & 0x3ff);
+        } else if (BETWEEN(addr, FG_RAM_START, FG_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.fg_tilemap, (addr - FG_RAM_START) & 0x1ff);
+        } else if (BETWEEN(addr, BG_RAM_START, BG_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.bg_tilemap, (addr - BG_RAM_START) & 0x1ff);
         } else if (BETWEEN(addr, PALETTE_RAM_START, PALETTE_RAM_END)) {
           rygar_update_palette_cache(addr - PALETTE_RAM_START, data);
         }
