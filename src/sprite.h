@@ -29,7 +29,7 @@ static const uint8_t layout[8][8] = {
   { 42, 43, 46, 47, 58, 59, 62, 63 }
 };
 
-static void sprite_draw_8x8_tile(uint32_t* buffer, mem_t* rom, uint16_t code, uint8_t color, uint16_t sx, uint16_t sy) {
+static void sprite_draw_8x8_tile(uint32_t* buffer, uint32_t* palette, mem_t* rom, uint16_t code, uint8_t color, uint16_t sx, uint16_t sy) {
   uint32_t* dst = buffer + sy*DISPLAY_WIDTH + sx;
 
   for (int y = 0; y < 8; y++) {
@@ -41,8 +41,10 @@ static void sprite_draw_8x8_tile(uint32_t* buffer, mem_t* rom, uint16_t code, ui
       uint8_t data = mem_rd(rom, base_addr + x);
       uint8_t hi = data>>4 & 0xf;
       uint8_t lo = data & 0xf;
-      *ptr++ = 0xff000000 | (hi << 21) | (hi << 13) | (hi << 5);
-      *ptr++ = 0xff000000 | (lo << 21) | (lo << 13) | (lo << 5);
+      if (hi) { *ptr = palette[color<<4|hi]; }
+      *ptr++;
+      if (lo) { *ptr = palette[color<<4|lo]; }
+      *ptr++;
     }
   }
 }
@@ -69,7 +71,7 @@ static void sprite_draw_8x8_tile(uint32_t* buffer, mem_t* rom, uint16_t code, ui
  *       6 | -------- |
  *       7 | -------- |
  */
-void sprite_draw(uint32_t* dst, uint8_t* ram, mem_t* rom) {
+void sprite_draw(uint32_t* dst, uint32_t* palette, uint8_t* ram, mem_t* rom) {
   for (int addr = SPRITE_RAM_SIZE - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
     bool visible = ram[addr] & 0x04;
 
@@ -94,7 +96,7 @@ void sprite_draw(uint32_t* dst, uint8_t* ram, mem_t* rom) {
         for (int x = 0; x < size; x++) {
           int sx = xpos + 8*(flipx?(size-1-x):x);
           int sy = ypos + 8*(flipy?(size-1-y):y);
-          sprite_draw_8x8_tile(dst, rom, code + layout[y][x], color, sx, sy);
+          sprite_draw_8x8_tile(dst, palette, rom, code + layout[y][x], color, sx, sy);
         }
       }
     }
