@@ -32,6 +32,20 @@ static const uint8_t layout[8][8] = {
   { 42, 43, 46, 47, 58, 59, 62, 63 }
 };
 
+/**
+ * Draws a single pixel, taking into account transparency and priority.
+ */
+static inline void sprite_draw_pixel(uint16_t* bitmap, uint8_t* priority, uint8_t priority_mask, uint8_t color, uint8_t pen) {
+  // Don't draw if we're using the transparent pen.
+  if (pen == TRANSPARENT_PEN) return;
+
+  // Don't draw if there's already a pixel with higher priority.
+  if ((*priority & priority_mask) != 0) return;
+
+  *bitmap = color<<4 | pen;
+  *priority = priority_mask;
+}
+
 static void sprite_draw_8x8_tile(
   uint16_t* bitmap,
   uint8_t* priority,
@@ -55,42 +69,20 @@ static void sprite_draw_8x8_tile(
     if (!flipx) {
       for (int x = 0; (x < 4) && (sx + x < DISPLAY_WIDTH); x++) {
         uint8_t data = mem_rd(rom, tile_addr_base + x);
-        uint8_t hi = data>>4 & 0xf;
-        uint8_t lo = data & 0xf;
+        uint8_t hi_pen = data>>4 & 0xf;
+        uint8_t lo_pen = data & 0xf;
 
-        if ((hi != TRANSPARENT_PEN) && ((*priority_ptr & priority_mask) == 0)) {
-          *bitmap_ptr = color<<4 | hi;
-          *priority_ptr = priority_mask;
-        }
-        bitmap_ptr++;
-        priority_ptr++;
-
-        if ((lo != TRANSPARENT_PEN) && ((*priority_ptr & priority_mask) == 0)) {
-          *bitmap_ptr = color<<4 | lo;
-          *priority_ptr = priority_mask;
-        }
-        bitmap_ptr++;
-        priority_ptr++;
+        sprite_draw_pixel(bitmap_ptr++, priority_ptr++, priority_mask, color, hi_pen);
+        sprite_draw_pixel(bitmap_ptr++, priority_ptr++, priority_mask, color, lo_pen);
       }
     } else {
       for (int x = 3; (x >= 0) && (x + sx < DISPLAY_WIDTH); x--) {
         uint8_t data = mem_rd(rom, tile_addr_base + x);
-        uint8_t hi = data>>4 & 0xf;
-        uint8_t lo = data & 0xf;
+        uint8_t hi_pen = data>>4 & 0xf;
+        uint8_t lo_pen = data & 0xf;
 
-        if ((lo != TRANSPARENT_PEN) && ((*priority_ptr & priority_mask) == 0)) {
-          *bitmap_ptr = color<<4 | lo;
-          *priority_ptr = priority_mask;
-        }
-        bitmap_ptr++;
-        priority_ptr++;
-
-        if ((hi != TRANSPARENT_PEN) && ((*priority_ptr & priority_mask) == 0)) {
-          *bitmap_ptr = color<<4 | hi;
-          *priority_ptr = priority_mask;
-        }
-        bitmap_ptr++;
-        priority_ptr++;
+        sprite_draw_pixel(bitmap_ptr++, priority_ptr++, priority_mask, color, lo_pen);
+        sprite_draw_pixel(bitmap_ptr++, priority_ptr++, priority_mask, color, hi_pen);
       }
     }
   }
