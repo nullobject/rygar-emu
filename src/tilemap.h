@@ -169,7 +169,7 @@ void tilemap_set_scroll_x(tilemap_t* tilemap, const uint16_t value) {
 /**
  * Draws the tilemap to the given buffer.
  */
-void tilemap_draw(tilemap_t* tilemap, uint32_t* dst, uint32_t* palette, uint8_t layer) {
+void tilemap_draw(tilemap_t* tilemap, uint16_t* bitmap, uint8_t* priority, uint16_t palette_offset, uint8_t layer) {
   for (int row = 0; row < tilemap->rows; row++) {
     for (int col = 0; col < tilemap->cols; col++) {
       uint16_t index = row*tilemap->cols + col;
@@ -197,9 +197,13 @@ void tilemap_draw(tilemap_t* tilemap, uint32_t* dst, uint32_t* palette, uint8_t 
       uint32_t addr = y*tilemap->width + wrapped_x;
       uint16_t pixel = tilemap->buffer[addr];
 
-      if (pixel & 0x0f00) { *dst = palette[pixel&0xff]; }
+      if (pixel & 0x0f00) {
+        *bitmap = (pixel&0xff) + palette_offset;
+        *priority = pixel>>8;
+      }
 
-      dst++;
+      bitmap++;
+      priority++;
     }
   }
 }

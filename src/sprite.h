@@ -10,6 +10,9 @@
 #define DISPLAY_WIDTH 256
 #define DISPLAY_HEIGHT 256
 
+// Pixels drawn with this pen will be marked as transparent.
+#define TRANSPARENT_PEN 0
+
 #define NUM_SPRITES 256
 
 // sprite size in bytes
@@ -29,39 +32,72 @@ static const uint8_t layout[8][8] = {
   { 42, 43, 46, 47, 58, 59, 62, 63 }
 };
 
-static void sprite_draw_8x8_tile(uint32_t* buffer, uint32_t* palette, mem_t* rom, uint16_t code, uint8_t color, uint8_t flipx, uint8_t flipy, uint16_t sx, uint16_t sy) {
-  uint32_t* dst = buffer + sy*DISPLAY_WIDTH + sx;
+static void sprite_draw_8x8_tile(
+  uint16_t* bitmap,
+  uint8_t* priority,
+  mem_t* rom,
+  uint16_t code,
+  uint8_t color,
+  uint8_t priority_mask,
+  uint8_t flipx,
+  uint8_t flipy,
+  uint16_t sx,
+  uint16_t sy
+) {
+  uint16_t* bitmap_addr_base = bitmap + sy*DISPLAY_WIDTH + sx;
+  uint8_t* priority_addr_base = priority + sy*DISPLAY_WIDTH + sx;
 
   for (int y = 0; y < 8; y++) {
-    int base_addr = code*TILE_SIZE + y*NUM_BITPLANES;
-    uint32_t* ptr = dst + y*DISPLAY_WIDTH;
+    uint32_t tile_addr_base = code*TILE_SIZE + y*NUM_BITPLANES;
+    uint16_t* bitmap_ptr = bitmap_addr_base + y*DISPLAY_WIDTH;
+    uint8_t* priority_ptr = priority_addr_base + y*DISPLAY_WIDTH;
 
     if (!flipx) {
       for (int x = 0; (x < 4) && (sx + x < DISPLAY_WIDTH); x++) {
-        uint8_t data = mem_rd(rom, base_addr + x);
+        uint8_t data = mem_rd(rom, tile_addr_base + x);
         uint8_t hi = data>>4 & 0xf;
         uint8_t lo = data & 0xf;
-        if (hi) { *ptr = palette[color<<4|hi]; }
-        *ptr++;
-        if (lo) { *ptr = palette[color<<4|lo]; }
-        *ptr++;
+
+        if ((hi != TRANSPARENT_PEN) && ((*priority_ptr & priority_mask) == 0)) {
+          *bitmap_ptr = color<<4 | hi;
+          *priority_ptr = priority_mask;
+        }
+        bitmap_ptr++;
+        priority_ptr++;
+
+        if ((lo != TRANSPARENT_PEN) && ((*priority_ptr & priority_mask) == 0)) {
+          *bitmap_ptr = color<<4 | lo;
+          *priority_ptr = priority_mask;
+        }
+        bitmap_ptr++;
+        priority_ptr++;
       }
     } else {
       for (int x = 3; (x >= 0) && (x + sx < DISPLAY_WIDTH); x--) {
-        uint8_t data = mem_rd(rom, base_addr + x);
+        uint8_t data = mem_rd(rom, tile_addr_base + x);
         uint8_t hi = data>>4 & 0xf;
         uint8_t lo = data & 0xf;
-        if (lo) { *ptr = palette[color<<4|lo]; }
-        *ptr++;
-        if (hi) { *ptr = palette[color<<4|hi]; }
-        *ptr++;
+
+        if ((lo != TRANSPARENT_PEN) && ((*priority_ptr & priority_mask) == 0)) {
+          *bitmap_ptr = color<<4 | lo;
+          *priority_ptr = priority_mask;
+        }
+        bitmap_ptr++;
+        priority_ptr++;
+
+        if ((hi != TRANSPARENT_PEN) && ((*priority_ptr & priority_mask) == 0)) {
+          *bitmap_ptr = color<<4 | hi;
+          *priority_ptr = priority_mask;
+        }
+        bitmap_ptr++;
+        priority_ptr++;
       }
     }
   }
 }
 
 /**
- * Draws the sprites to the given buffer.
+ * Draws the sprites to the given bitmap.
  *
  * The sprites are stored in the following format:
  *
@@ -82,22 +118,21 @@ static void sprite_draw_8x8_tile(uint32_t* buffer, uint32_t* palette, mem_t* rom
  *       6 | -------- |
  *       7 | -------- |
  */
-void sprite_draw(uint32_t* dst, uint32_t* palette, uint8_t* ram, mem_t* rom) {
+void sprite_draw(uint16_t* bitmap, uint8_t* priority, uint8_t* ram, mem_t* rom) {
   for (int addr = SPRITE_RAM_SIZE - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
     bool visible = ram[addr] & 0x04;
 
 		if (visible) {
       uint8_t bank = ram[addr];
-      uint16_t code = ram[addr+1];
+      uint16_t code = ram[addr+1] | (bank & 0xf0)<<4;
       uint8_t size = ram[addr+2] & 0x03;
 
-      code |= (bank & 0xf0) << 4;
-
-      // Ensure the lower bits are masked out for the diffrent sizes (8x8,
-      // 16x16, 32x32, 64x64). This is required because we add a tile code
-      // offset for each tile in the different sizes.
+      // Ensure the lower bits are masked out for the diffrent sizes. This is
+      // required because we add a tile code offset for each tile in the
+      // different sizes.
       code &= ~((1 << (size*2)) - 1);
 
+      // The size is specified in 8x8 tiles (8x8, 16x16, 32x32, 64x64).
       size = 1 << size;
 
       uint8_t flags = ram[addr+3];
@@ -107,12 +142,21 @@ void sprite_draw(uint32_t* dst, uint32_t* palette, uint8_t* ram, mem_t* rom) {
 			uint8_t flipx = bank & 0x01;
 			uint8_t flipy = bank & 0x02;
       uint8_t color = flags & 0x0f;
+      uint8_t priority_mask;
+
+			switch (flags>>6) {
+				default:
+				case 0x0: priority_mask = 0; break;
+				case 0x1: priority_mask = 0x1; break; /* obscured by text layer */
+				case 0x2: priority_mask = 0x1|0x2; break; /* obscured by foreground */
+				case 0x3: priority_mask = 0x1|0x2|0x4; break; /* obscured by foreground and background */
+			}
 
       for (int y = 0; y < size; y++) {
         for (int x = 0; x < size; x++) {
           int sx = xpos + 8*(flipx?(size-1-x):x);
           int sy = ypos + 8*(flipy?(size-1-y):y);
-          sprite_draw_8x8_tile(dst, palette, rom, code + layout[y][x], color, flipx, flipy, sx, sy);
+          sprite_draw_8x8_tile(bitmap, priority, rom, code + layout[y][x], color, priority_mask, flipx, flipy, sx, sy);
         }
       }
     }
