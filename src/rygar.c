@@ -333,19 +333,20 @@ static void rygar_draw() {
   uint16_t* src = &rygar.bitmap;
   uint8_t* priority = &rygar.priority;
 
-  // Clear buffers.
+  // clear buffers
   memset(dst, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(dst[0]));
   memset(src, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(src[0]));
   memset(priority, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(priority[0]));
 
-  // Draw graphics layers.
+  // draw tile layers
   tilemap_draw(&rygar.bg_tilemap, src, priority, 0x300, 4);
   tilemap_draw(&rygar.fg_tilemap, src, priority, 0x200, 2);
   tilemap_draw(&rygar.tx_tilemap, src, priority, 0x100, 1);
+
+  // draw sprite layer
   sprite_draw(src, priority, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
 
-  // Copy the 16-bit pixels to the 32-bit frame buffer, converting the palette
-  // indices to RGBA colour values.
+  // copy 16-bit pixels to 32-bit frame buffer
   for (int y = 0; y < DISPLAY_HEIGHT; y++) {
     for (int x = 0; x < DISPLAY_WIDTH; x++) {
       *dst++ = rygar.palette[*src++];

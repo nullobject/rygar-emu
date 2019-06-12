@@ -20,11 +20,17 @@
 
 #define SPRITE_RAM_SIZE 0x800
 
-// tile offsets
-static const uint8_t layout[8][8] = {
-  { 0, 1, 4, 5, 16, 17, 20, 21 },
-  { 2, 3, 6, 7, 18, 19, 22, 23 },
-  { 8, 9, 12, 13, 24, 25, 28, 29 },
+// There are four possible sprite sizes: 8x8, 16x16, 32x32, and 64x64. All
+// sprites are composed of a number of 8x8 tiles. This lookup table allows us
+// to easily find the offsets of the tiles which make up a sprite.
+//
+// We store the offset values of the tiles for the different sprite sizes. For
+// example, a 8x8 sprite contains only a single tile with an offset value of
+// zero. A 16x16 sprite contains four tiles, with offset values 0, 1, 2, and 3.
+static const uint8_t sprite_tile_offset_table[8][8] = {
+  {  0,  1,  4,  5, 16, 17, 20, 21 },
+  {  2,  3,  6,  7, 18, 19, 22, 23 },
+  {  8,  9, 12, 13, 24, 25, 28, 29 },
   { 10, 11, 14, 15, 26, 27, 30, 31 },
   { 32, 33, 36, 37, 48, 49, 52, 53 },
   { 34, 35, 38, 39, 50, 51, 54, 55 },
@@ -119,9 +125,9 @@ void sprite_draw(uint16_t* bitmap, uint8_t* priority, uint8_t* ram, mem_t* rom) 
       uint16_t code = ram[addr+1] | (bank & 0xf0)<<4;
       uint8_t size = ram[addr+2] & 0x03;
 
-      // Ensure the lower bits are masked out for the diffrent sizes. This is
-      // required because we add a tile code offset for each tile in the
-      // different sizes.
+      // Ensure the lower sprite code bits are masked. This is required because
+      // we add the tile code offset from the layout lookup table for the
+      // different sprite sizes.
       code &= ~((1 << (size*2)) - 1);
 
       // The size is specified in 8x8 tiles (8x8, 16x16, 32x32, 64x64).
@@ -139,16 +145,26 @@ void sprite_draw(uint16_t* bitmap, uint8_t* priority, uint8_t* ram, mem_t* rom) 
 			switch (flags>>6) {
 				default:
 				case 0x0: priority_mask = 0; break;
-				case 0x1: priority_mask = 0x1; break; /* obscured by text layer */
-				case 0x2: priority_mask = 0x1|0x2; break; /* obscured by foreground */
-				case 0x3: priority_mask = 0x1|0x2|0x4; break; /* obscured by foreground and background */
+				case 0x1: priority_mask = 0x1; break; // obscured by text layer
+				case 0x2: priority_mask = 0x1|0x2; break; // obscured by foreground
+				case 0x3: priority_mask = 0x1|0x2|0x4; break; // obscured by foreground and background
 			}
 
       for (int y = 0; y < size; y++) {
         for (int x = 0; x < size; x++) {
           int sx = xpos + 8*(flipx?(size-1-x):x);
           int sy = ypos + 8*(flipy?(size-1-y):y);
-          sprite_draw_8x8_tile(bitmap, priority, rom, code + layout[y][x], color, priority_mask, flipx, flipy, sx, sy);
+
+          sprite_draw_8x8_tile(
+            bitmap,
+            priority,
+            rom,
+            code + sprite_tile_offset_table[y][x],
+            color,
+            priority_mask,
+            flipx, flipy,
+            sx, sy
+          );
         }
       }
     }
