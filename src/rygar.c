@@ -4,6 +4,7 @@
 #define CHIPS_IMPL
 #define COMMON_IMPL
 
+#include "bitmap.h"
 #include "chips/clk.h"
 #include "chips/z80.h"
 #include "clock.h"
@@ -11,6 +12,7 @@
 #include "mem.h"
 #include "rygar-roms.h"
 #include "sokol_app.h"
+#include "sprite.h"
 #include "tilemap.h"
 
 #define BETWEEN(n, a, b) ((n >= a) && (n <= b))
@@ -22,12 +24,15 @@
 
 #define TX_RAM_SIZE 0x800
 #define TX_RAM_START 0xd000
+#define TX_RAM_END (TX_RAM_START + TX_RAM_SIZE - 1)
 
 #define FG_RAM_SIZE 0x400
 #define FG_RAM_START 0xd800
+#define FG_RAM_END (FG_RAM_START + FG_RAM_SIZE - 1)
 
 #define BG_RAM_SIZE 0x400
 #define BG_RAM_START 0xdc00
+#define BG_RAM_END (BG_RAM_START + BG_RAM_SIZE - 1)
 
 #define SPRITE_RAM_SIZE 0x800
 #define SPRITE_RAM_START 0xe000
@@ -105,8 +110,12 @@ typedef struct {
   tilemap_t fg_tilemap;
   tilemap_t bg_tilemap;
 
+  // buffers
+  uint16_t bitmap[DISPLAY_WIDTH*DISPLAY_HEIGHT]; // pixel bitmap
+  uint8_t priority[DISPLAY_WIDTH*DISPLAY_HEIGHT]; // priority map
+
   // 32-bit RGBA color palette cache
-  uint32_t palette_cache[1024];
+  uint32_t palette[1024];
 
   // counters
   int vsync_count;
@@ -124,9 +133,9 @@ rygar_t rygar;
  * up to date, so that the 32-bit colors don't need to be computed for each
  * pixel in the video decoding code.
  */
-static inline void rygar_update_palette_cache(uint16_t addr, uint8_t data) {
+static inline void rygar_update_palette(uint16_t addr, uint8_t data) {
   uint16_t pal_index = addr>>1;
-  uint32_t c = rygar.palette_cache[pal_index];
+  uint32_t c = rygar.palette[pal_index];
 
   if (addr & 1) {
     // odd addresses are the RRRRGGGG part
@@ -139,7 +148,7 @@ static inline void rygar_update_palette_cache(uint16_t addr, uint8_t data) {
     c = 0xff000000 | (c & 0x0000ffff) | b << 16;
   }
 
-  rygar.palette_cache[pal_index] = c;
+  rygar.palette[pal_index] = c;
 }
 
 /**
@@ -169,14 +178,14 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
       if (BETWEEN(addr, RAM_START, RAM_END)) {
         mem_wr(&rygar.main.mem, addr, data);
 
-        if (BETWEEN(addr, TX_RAM_START, TX_RAM_START + 0x400)) {
-          tilemap_mark_tile_dirty(&rygar.tx_tilemap, addr - TX_RAM_START);
-        } else if (BETWEEN(addr, FG_RAM_START, FG_RAM_START + 0x200)) {
-          tilemap_mark_tile_dirty(&rygar.fg_tilemap, addr - FG_RAM_START);
-        } else if (BETWEEN(addr, BG_RAM_START, BG_RAM_START + 0x200)) {
-          tilemap_mark_tile_dirty(&rygar.bg_tilemap, addr - BG_RAM_START);
+        if (BETWEEN(addr, TX_RAM_START, TX_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.tx_tilemap, (addr - TX_RAM_START) & 0x3ff);
+        } else if (BETWEEN(addr, FG_RAM_START, FG_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.fg_tilemap, (addr - FG_RAM_START) & 0x1ff);
+        } else if (BETWEEN(addr, BG_RAM_START, BG_RAM_END)) {
+          tilemap_mark_tile_dirty(&rygar.bg_tilemap, (addr - BG_RAM_START) & 0x1ff);
         } else if (BETWEEN(addr, PALETTE_RAM_START, PALETTE_RAM_END)) {
-          rygar_update_palette_cache(addr - PALETTE_RAM_START, data);
+          rygar_update_palette(addr - PALETTE_RAM_START, data);
         }
       } else if (BETWEEN(addr, FG_SCROLL_START, FG_SCROLL_END)) {
         uint8_t offset = addr - FG_SCROLL_START;
@@ -318,6 +327,35 @@ static void rygar_init() {
 }
 
 /**
+ * Draws the graphics layers to the frame buffer.
+ */
+static void rygar_draw() {
+  uint32_t* dst = gfx_framebuffer();
+  uint16_t* src = &rygar.bitmap;
+  uint8_t* priority = &rygar.priority;
+
+  // clear buffers
+  memset(dst, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(dst[0]));
+  memset(priority, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(priority[0]));
+  bitmap_fill(src, 0x100, DISPLAY_WIDTH * DISPLAY_HEIGHT);
+
+  // draw tile layers
+  tilemap_draw(&rygar.bg_tilemap, src, priority, 0x300, 4);
+  tilemap_draw(&rygar.fg_tilemap, src, priority, 0x200, 2);
+  tilemap_draw(&rygar.tx_tilemap, src, priority, 0x100, 1);
+
+  // draw sprite layer
+  sprite_draw(src, priority, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
+
+  // copy 16-bit pixels to 32-bit frame buffer
+  for (uint16_t y = 0; y < DISPLAY_HEIGHT; y++) {
+    for (uint16_t x = 0; x < DISPLAY_WIDTH; x++) {
+      *dst++ = rygar.palette[*src++];
+    }
+  }
+}
+
+/**
  * Runs the emulation for one frame.
  */
 static void rygar_exec(uint32_t delta) {
@@ -329,15 +367,7 @@ static void rygar_exec(uint32_t delta) {
   }
   clk_ticks_executed(&rygar.main.clk, ticks_executed);
 
-  uint32_t* buffer = gfx_framebuffer();
-
-  // Clear buffer.
-  memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(buffer[0]));
-
-  // Draw graphics layers.
-  tilemap_draw(&rygar.bg_tilemap, buffer, rygar.palette_cache + 0x300, 3);
-  tilemap_draw(&rygar.fg_tilemap, buffer, rygar.palette_cache + 0x200, 2);
-  tilemap_draw(&rygar.tx_tilemap, buffer, rygar.palette_cache + 0x100, 1);
+  rygar_draw();
 }
 
 static void app_init() {
