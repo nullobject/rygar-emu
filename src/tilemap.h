@@ -14,11 +14,6 @@
 // Pixels drawn with this pen will be marked as transparent.
 #define TRANSPARENT_PEN 0
 
-// The size of the pixel buffer.
-#define BUFFER_SIZE (DISPLAY_WIDTH*DISPLAY_HEIGHT*2)
-
-#define MAX_TILES 1024
-
 // tile flags
 #define TILE_DIRTY 0x01
 
@@ -56,10 +51,10 @@ typedef struct {
   uint16_t scroll_x;
 
   // pixel data
-  uint16_t buffer[BUFFER_SIZE];
+  uint16_t* buffer;
 
   // tile data
-  tile_t tiles[MAX_TILES];
+  tile_t* tiles;
 
   // tile info callback
   void (*tile_cb)(tile_t* tile, uint16_t index);
@@ -153,6 +148,16 @@ void tilemap_init(tilemap_t* tilemap, const tilemap_desc_t* desc) {
   tilemap->width = desc->tile_width * desc->cols;
   tilemap->height = desc->tile_height * desc->rows;
   tilemap->tile_cb = desc->tile_cb;
+
+  tilemap->tiles = malloc(tilemap->cols * tilemap->rows * sizeof(tile_t));
+  tilemap->buffer = malloc(tilemap->width * tilemap->height * sizeof(uint16_t));
+}
+
+void tilemap_shutdown(tilemap_t* tilemap) {
+  free(tilemap->tiles);
+  free(tilemap->buffer);
+  tilemap->tiles = 0;
+  tilemap->buffer = 0;
 }
 
 void tilemap_mark_tile_dirty(tilemap_t* tilemap, const uint16_t index) {
