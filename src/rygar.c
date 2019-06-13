@@ -105,14 +105,12 @@ typedef struct {
 typedef struct {
   mainboard_t main;
 
+  bitmap_t bitmap;
+
   // tilemaps
   tilemap_t tx_tilemap;
   tilemap_t fg_tilemap;
   tilemap_t bg_tilemap;
-
-  // buffers
-  uint16_t bitmap[DISPLAY_WIDTH*DISPLAY_HEIGHT]; // pixel bitmap
-  uint8_t priority[DISPLAY_WIDTH*DISPLAY_HEIGHT]; // priority map
 
   // 32-bit RGBA color palette cache
   uint32_t palette[1024];
@@ -298,6 +296,8 @@ static void rygar_init() {
   mem_map_rom(&rygar.main.sprite_rom, 0, 0x10000, 0x8000, dump_vid_6h);
   mem_map_rom(&rygar.main.sprite_rom, 0, 0x18000, 0x8000, dump_vid_6g);
 
+  bitmap_init(&rygar.bitmap, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+
   tilemap_init(&rygar.tx_tilemap, &(tilemap_desc_t) {
     .tile_cb = tx_tile_info,
     .rom = &rygar.main.tx_rom,
@@ -326,32 +326,36 @@ static void rygar_init() {
   });
 }
 
+static void rygar_shutdown() {
+  bitmap_shutdown(&rygar.bitmap);
+  tilemap_shutdown(&rygar.tx_tilemap);
+  tilemap_shutdown(&rygar.fg_tilemap);
+  tilemap_shutdown(&rygar.bg_tilemap);
+}
+
 /**
  * Draws the graphics layers to the frame buffer.
  */
 static void rygar_draw() {
-  uint32_t* dst = gfx_framebuffer();
-  uint16_t* src = &rygar.bitmap;
-  uint8_t* priority = &rygar.priority;
+  // clear frame buffer
+  uint32_t* buffer = gfx_framebuffer();
+  memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(uint32_t));
 
-  // clear buffers
-  memset(dst, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(dst[0]));
-  memset(priority, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(priority[0]));
-  bitmap_fill(src, 0x100, DISPLAY_WIDTH * DISPLAY_HEIGHT);
+  bitmap_t* bitmap = &rygar.bitmap;
+  bitmap_fill(bitmap, 0x100);
 
   // draw tile layers
-  tilemap_draw(&rygar.bg_tilemap, src, priority, 0x300, 4);
-  tilemap_draw(&rygar.fg_tilemap, src, priority, 0x200, 2);
-  tilemap_draw(&rygar.tx_tilemap, src, priority, 0x100, 1);
+  tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, 4);
+  tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, 2);
+  tilemap_draw(&rygar.tx_tilemap, bitmap, 0x100, 1);
 
   // draw sprite layer
-  sprite_draw(src, priority, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
+  sprite_draw(bitmap, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
 
   // copy 16-bit pixels to 32-bit frame buffer
-  for (uint16_t y = 0; y < DISPLAY_HEIGHT; y++) {
-    for (uint16_t x = 0; x < DISPLAY_WIDTH; x++) {
-      *dst++ = rygar.palette[*src++];
-    }
+  uint16_t* data = bitmap->data;
+  for (uint32_t i = 0; i < bitmap->width * bitmap->height; i++) {
+    *buffer++ = rygar.palette[*data++];
   }
 }
 
@@ -389,6 +393,7 @@ static void app_input(const sapp_event* event) {
 }
 
 static void app_cleanup() {
+  rygar_shutdown();
   gfx_shutdown();
 }
 

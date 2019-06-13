@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bitmap.h"
 #include "mem.h"
 
 // The number of bitplanes that define the pixel data for the 8x8 tiles.
@@ -9,10 +10,6 @@
 //
 // A single 8x8 tile takes up one byte per bitplane, per row.
 #define TILE_SIZE (8*NUM_BITPLANES)
-
-// Display width/height in pixels.
-#define DISPLAY_WIDTH 256
-#define DISPLAY_HEIGHT 256
 
 // Pixels drawn with this pen will be marked as transparent.
 #define TRANSPARENT_PEN 0
@@ -169,7 +166,7 @@ void tilemap_set_scroll_x(tilemap_t* tilemap, const uint16_t value) {
 /**
  * Draws the tilemap to the given buffer.
  */
-void tilemap_draw(tilemap_t* tilemap, uint16_t* bitmap, uint8_t* priority, uint16_t palette_offset, uint8_t layer) {
+void tilemap_draw(tilemap_t* tilemap, bitmap_t* bitmap, uint16_t palette_offset, uint8_t layer) {
   for (int row = 0; row < tilemap->rows; row++) {
     for (int col = 0; col < tilemap->cols; col++) {
       uint16_t index = row*tilemap->cols + col;
@@ -189,8 +186,11 @@ void tilemap_draw(tilemap_t* tilemap, uint16_t* bitmap, uint8_t* priority, uint1
     }
   }
 
-  for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-    for (int x = 0; x < DISPLAY_WIDTH; x++) {
+  uint16_t* data = bitmap->data;
+  uint8_t* priority = bitmap->priority;
+
+  for (int y = 0; y < bitmap->height; y++) {
+    for (int x = 0; x < bitmap->width; x++) {
       // Calculate the wrapped x coordinate in tilemap space. Wrapping occurs
       // when the visible area is outside of the tilemap.
       uint32_t wrapped_x = (x + tilemap->scroll_x) & (tilemap->width - 1);
@@ -198,11 +198,11 @@ void tilemap_draw(tilemap_t* tilemap, uint16_t* bitmap, uint8_t* priority, uint1
       uint16_t pixel = tilemap->buffer[addr];
 
       if (pixel & 0x0f00) {
-        *bitmap = (pixel&0xff) + palette_offset;
+        *data = (pixel&0xff) + palette_offset;
         *priority = pixel>>8;
       }
 
-      bitmap++;
+      data++;
       priority++;
     }
   }
