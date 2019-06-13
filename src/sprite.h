@@ -1,3 +1,6 @@
+#pragma once
+
+#include "bitmap.h"
 #include "mem.h"
 
 // The number of bitplanes that define the pixel data for the 8x8 tiles.
@@ -5,10 +8,6 @@
 
 // A single 8x8 tile takes up one byte per bitplane, per row.
 #define TILE_SIZE (8*NUM_BITPLANES)
-
-// Display width/height in pixels.
-#define DISPLAY_WIDTH 256
-#define DISPLAY_HEIGHT 256
 
 // Pixels drawn with this pen will be marked as transparent.
 #define TRANSPARENT_PEN 0
@@ -41,20 +40,19 @@ static const uint8_t sprite_tile_offset_table[8][8] = {
 /**
  * Draws a single pixel, taking into account transparency and priority.
  */
-static inline void sprite_draw_pixel(uint16_t* bitmap, uint8_t* priority, uint8_t priority_mask, uint8_t color, uint8_t pen) {
+static inline void sprite_draw_pixel(uint16_t* data, uint8_t* priority, uint8_t priority_mask, uint8_t color, uint8_t pen) {
   // Don't draw if we're using the transparent pen.
   if (pen == TRANSPARENT_PEN) return;
 
   // Don't draw if there's already a pixel with higher priority.
   if ((*priority & priority_mask) != 0) return;
 
-  *bitmap = color<<4 | pen;
+  *data = color<<4 | pen;
   *priority = priority_mask;
 }
 
 static void sprite_draw_8x8_tile(
-  uint16_t* bitmap,
-  uint8_t* priority,
+  bitmap_t* bitmap,
   mem_t* rom,
   uint16_t code,
   uint8_t color,
@@ -64,31 +62,31 @@ static void sprite_draw_8x8_tile(
   uint16_t sx,
   uint16_t sy
 ) {
-  uint16_t* bitmap_addr_base = bitmap + sy*DISPLAY_WIDTH + sx;
-  uint8_t* priority_addr_base = priority + sy*DISPLAY_WIDTH + sx;
+  uint16_t* data_addr_base = bitmap->data + sy*bitmap->width + sx;
+  uint8_t* priority_addr_base = bitmap->priority + sy*bitmap->width + sx;
 
   for (int y = 0; y < 8; y++) {
     uint32_t tile_addr_base = code*TILE_SIZE + y*NUM_BITPLANES;
-    uint16_t* bitmap_ptr = bitmap_addr_base + y*DISPLAY_WIDTH;
-    uint8_t* priority_ptr = priority_addr_base + y*DISPLAY_WIDTH;
+    uint16_t* data_ptr = data_addr_base + y*bitmap->width;
+    uint8_t* priority_ptr = priority_addr_base + y*bitmap->width;
 
     if (!flipx) {
-      for (int x = 0; (x < 4) && (sx + x < DISPLAY_WIDTH); x++) {
+      for (int x = 0; (x < 4) && (sx + x < bitmap->width); x++) {
         uint8_t data = mem_rd(rom, tile_addr_base + x);
         uint8_t hi_pen = data>>4 & 0xf;
         uint8_t lo_pen = data & 0xf;
 
-        sprite_draw_pixel(bitmap_ptr++, priority_ptr++, priority_mask, color, hi_pen);
-        sprite_draw_pixel(bitmap_ptr++, priority_ptr++, priority_mask, color, lo_pen);
+        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, hi_pen);
+        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, lo_pen);
       }
     } else {
-      for (int x = 3; (x >= 0) && (x + sx < DISPLAY_WIDTH); x--) {
+      for (int x = 3; (x >= 0) && (x + sx < bitmap->width); x--) {
         uint8_t data = mem_rd(rom, tile_addr_base + x);
         uint8_t hi_pen = data>>4 & 0xf;
         uint8_t lo_pen = data & 0xf;
 
-        sprite_draw_pixel(bitmap_ptr++, priority_ptr++, priority_mask, color, lo_pen);
-        sprite_draw_pixel(bitmap_ptr++, priority_ptr++, priority_mask, color, hi_pen);
+        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, lo_pen);
+        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, hi_pen);
       }
     }
   }
@@ -116,7 +114,7 @@ static void sprite_draw_8x8_tile(
  *       6 | -------- |
  *       7 | -------- |
  */
-void sprite_draw(uint16_t* bitmap, uint8_t* priority, uint8_t* ram, mem_t* rom) {
+void sprite_draw(bitmap_t* bitmap, uint8_t* ram, mem_t* rom) {
   for (int addr = SPRITE_RAM_SIZE - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
     bool visible = ram[addr] & 0x04;
 
@@ -157,7 +155,6 @@ void sprite_draw(uint16_t* bitmap, uint8_t* priority, uint8_t* ram, mem_t* rom) 
 
           sprite_draw_8x8_tile(
             bitmap,
-            priority,
             rom,
             code + sprite_tile_offset_table[y][x],
             color,
