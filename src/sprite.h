@@ -1,7 +1,6 @@
 #pragma once
 
 #include "bitmap.h"
-#include "mem.h"
 
 // The number of bitplanes that define the pixel data for the 8x8 tiles.
 #define NUM_BITPLANES 4
@@ -53,7 +52,7 @@ static inline void sprite_draw_pixel(uint16_t* data, uint8_t* priority, uint8_t 
 
 static void sprite_draw_8x8_tile(
   bitmap_t* bitmap,
-  mem_t* rom,
+  uint8_t* rom,
   uint16_t code,
   uint8_t color,
   uint8_t priority_mask,
@@ -72,7 +71,7 @@ static void sprite_draw_8x8_tile(
 
     if (!flipx) {
       for (int x = 0; (x < 4) && (sx + x < bitmap->width); x++) {
-        uint8_t data = mem_rd(rom, tile_addr_base + x);
+        uint8_t data = rom[tile_addr_base + x];
         uint8_t hi_pen = data>>4 & 0xf;
         uint8_t lo_pen = data & 0xf;
 
@@ -81,7 +80,7 @@ static void sprite_draw_8x8_tile(
       }
     } else {
       for (int x = 3; (x >= 0) && (x + sx < bitmap->width); x--) {
-        uint8_t data = mem_rd(rom, tile_addr_base + x);
+        uint8_t data = rom[tile_addr_base + x];
         uint8_t hi_pen = data>>4 & 0xf;
         uint8_t lo_pen = data & 0xf;
 
@@ -114,7 +113,7 @@ static void sprite_draw_8x8_tile(
  *       6 | -------- |
  *       7 | -------- |
  */
-void sprite_draw(bitmap_t* bitmap, uint8_t* ram, mem_t* rom) {
+void sprite_draw(bitmap_t* bitmap, uint8_t* ram, uint8_t* rom) {
   for (int addr = SPRITE_RAM_SIZE - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
     bool visible = ram[addr] & 0x04;
 
