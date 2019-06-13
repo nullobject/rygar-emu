@@ -13,14 +13,15 @@
 #include "rygar-roms.h"
 #include "sokol_app.h"
 #include "sprite.h"
+#include "tile.h"
 #include "tilemap.h"
 
 #define BETWEEN(n, a, b) ((n >= a) && (n <= b))
 
-#define TX_ROM_SIZE 0x8000
-#define FG_ROM_SIZE 0x20000
-#define BG_ROM_SIZE 0x20000
-#define SPRITE_ROM_SIZE 0x20000
+#define TX_ROM_SIZE 0x10000
+#define FG_ROM_SIZE 0x40000
+#define BG_ROM_SIZE 0x40000
+#define SPRITE_ROM_SIZE 0x40000
 
 #define TX_RAM_SIZE 0x800
 #define TX_RAM_START 0xd000
@@ -91,7 +92,7 @@ typedef struct {
   uint8_t banked_rom[BANK_SIZE];
   uint8_t current_bank;
 
-  // gfx roms
+  // tile roms
   uint8_t tx_rom[TX_ROM_SIZE];
   uint8_t fg_rom[FG_ROM_SIZE];
   uint8_t bg_rom[BG_ROM_SIZE];
@@ -214,7 +215,7 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
   return pins;
 }
 
-static void tx_tile_info(tile_t* tile, uint16_t index) {
+static void tx_tile_info(tile_t* tile, int index) {
   uint8_t lo = rygar.main.tx_ram[index];
   uint8_t hi = rygar.main.tx_ram[index + 0x400];
 
@@ -226,7 +227,7 @@ static void tx_tile_info(tile_t* tile, uint16_t index) {
   tile->color = hi>>4;
 }
 
-static void fg_tile_info(tile_t* tile, uint16_t index) {
+static void fg_tile_info(tile_t* tile, int index) {
   uint8_t lo = rygar.main.fg_ram[index];
   uint8_t hi = rygar.main.fg_ram[index + 0x200];
 
@@ -238,7 +239,7 @@ static void fg_tile_info(tile_t* tile, uint16_t index) {
   tile->color = hi>>4;
 }
 
-static void bg_tile_info(tile_t* tile, uint16_t index) {
+static void bg_tile_info(tile_t* tile, int index) {
   uint8_t lo = rygar.main.bg_ram[index];
   uint8_t hi = rygar.main.bg_ram[index + 0x200];
 
@@ -248,6 +249,84 @@ static void bg_tile_info(tile_t* tile, uint16_t index) {
 
   // The four MSBs of the high byte represent the color value.
   tile->color = hi>>4;
+}
+
+/**
+ * Decodes the tile ROMs.
+ */
+static void rygar_decode_tiles() {
+  uint8_t tmp[0x20000];
+
+  // decodes a 8x8 tile
+  tile_decode_desc_t tile_decode_8x8 = {
+    .tile_width = 8,
+    .tile_height = 8,
+    .planes = 4,
+    .plane_offsets = { STEP4(0, 1) },
+	  .x_offsets = { STEP8(0, 4) },
+	  .y_offsets = { STEP8(0, 4*8) },
+    .tile_size = 4*8*8
+  };
+
+  // decodes a 16x16 tile, made up of four 8x8 tiles
+  tile_decode_desc_t tile_decode_16x16 = {
+    .tile_width = 16,
+    .tile_height = 16,
+    .planes = 4,
+    .plane_offsets = { STEP4(0, 1) },
+	  .x_offsets = { STEP8(0, 4), STEP8(4*8*8, 4) },
+	  .y_offsets = { STEP8(0, 4*8), STEP8(4*8*8*2, 4*8) },
+    .tile_size = 4*4*8*8
+  };
+
+  // tx rom
+  memcpy(&tmp[0x00000], dump_cpu_8k, 0x8000);
+  tile_decode(&tile_decode_8x8, &tmp, &rygar.main.tx_rom, 1024);
+  tilemap_init(&rygar.tx_tilemap, &(tilemap_desc_t) {
+    .tile_cb = tx_tile_info,
+    .rom = rygar.main.tx_rom,
+    .tile_width = 8,
+    .tile_height = 8,
+    .cols = 32,
+    .rows = 32
+  });
+
+  // fg rom
+  memcpy(&tmp[0x00000], dump_vid_6p, 0x8000);
+  memcpy(&tmp[0x08000], dump_vid_6o, 0x8000);
+  memcpy(&tmp[0x10000], dump_vid_6n, 0x8000);
+  memcpy(&tmp[0x18000], dump_vid_6l, 0x8000);
+  tile_decode(&tile_decode_16x16, &tmp, &rygar.main.fg_rom, 1024);
+  tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t) {
+    .tile_cb = fg_tile_info,
+    .rom = rygar.main.fg_rom,
+    .tile_width = 16,
+    .tile_height = 16,
+    .cols = 32,
+    .rows = 16
+  });
+
+  // bg rom
+  memcpy(&tmp[0x00000], dump_vid_6f, 0x8000);
+  memcpy(&tmp[0x08000], dump_vid_6e, 0x8000);
+  memcpy(&tmp[0x10000], dump_vid_6c, 0x8000);
+  memcpy(&tmp[0x18000], dump_vid_6b, 0x8000);
+  tile_decode(&tile_decode_16x16, &tmp, &rygar.main.bg_rom, 1024);
+  tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t) {
+    .tile_cb = bg_tile_info,
+    .rom = rygar.main.bg_rom,
+    .tile_width = 16,
+    .tile_height = 16,
+    .cols = 32,
+    .rows = 16
+  });
+
+  // sprite rom
+  memcpy(&tmp[0x00000], dump_vid_6k, 0x8000);
+  memcpy(&tmp[0x08000], dump_vid_6j, 0x8000);
+  memcpy(&tmp[0x10000], dump_vid_6h, 0x8000);
+  memcpy(&tmp[0x18000], dump_vid_6g, 0x8000);
+  tile_decode(&tile_decode_8x8, &tmp, &rygar.main.sprite_rom, 4096);
 }
 
 /**
@@ -261,6 +340,7 @@ static void rygar_init() {
   clk_init(&rygar.main.clk, CPU_FREQ);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
   mem_init(&rygar.main.mem);
+  bitmap_init(&rygar.bitmap, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
   // main memory
   mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
@@ -275,55 +355,7 @@ static void rygar_init() {
   // banked rom
   memcpy(&rygar.main.banked_rom[0x00000], dump_cpu_5j, 0x8000);
 
-  // tx rom
-  memcpy(&rygar.main.tx_rom[0x00000], dump_cpu_8k, 0x8000);
-
-  // fg rom
-  memcpy(&rygar.main.fg_rom[0x00000], dump_vid_6p, 0x8000);
-  memcpy(&rygar.main.fg_rom[0x08000], dump_vid_6o, 0x8000);
-  memcpy(&rygar.main.fg_rom[0x10000], dump_vid_6n, 0x8000);
-  memcpy(&rygar.main.fg_rom[0x18000], dump_vid_6l, 0x8000);
-
-  // bg rom
-  memcpy(&rygar.main.bg_rom[0x00000], dump_vid_6f, 0x8000);
-  memcpy(&rygar.main.bg_rom[0x08000], dump_vid_6e, 0x8000);
-  memcpy(&rygar.main.bg_rom[0x10000], dump_vid_6c, 0x8000);
-  memcpy(&rygar.main.bg_rom[0x18000], dump_vid_6b, 0x8000);
-
-  // sprite rom
-  memcpy(&rygar.main.sprite_rom[0x00000], dump_vid_6k, 0x8000);
-  memcpy(&rygar.main.sprite_rom[0x08000], dump_vid_6j, 0x8000);
-  memcpy(&rygar.main.sprite_rom[0x10000], dump_vid_6h, 0x8000);
-  memcpy(&rygar.main.sprite_rom[0x18000], dump_vid_6g, 0x8000);
-
-  bitmap_init(&rygar.bitmap, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-
-  tilemap_init(&rygar.tx_tilemap, &(tilemap_desc_t) {
-    .tile_cb = tx_tile_info,
-    .rom = rygar.main.tx_rom,
-    .tile_width = 8,
-    .tile_height = 8,
-    .cols = 32,
-    .rows = 32
-  });
-
-  tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t) {
-    .tile_cb = fg_tile_info,
-    .rom = rygar.main.fg_rom,
-    .tile_width = 16,
-    .tile_height = 16,
-    .cols = 32,
-    .rows = 16
-  });
-
-  tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t) {
-    .tile_cb = bg_tile_info,
-    .rom = rygar.main.bg_rom,
-    .tile_width = 16,
-    .tile_height = 16,
-    .cols = 32,
-    .rows = 16
-  });
+  rygar_decode_tiles();
 }
 
 static void rygar_shutdown() {

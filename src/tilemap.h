@@ -2,14 +2,6 @@
 
 #include "bitmap.h"
 
-// The number of bitplanes that define the pixel data for the 8x8 tiles.
-#define NUM_BITPLANES 4
-
-// The tile size in bytes.
-//
-// A single 8x8 tile takes up one byte per bitplane, per row.
-#define TILE_SIZE (8*NUM_BITPLANES)
-
 // Pixels drawn with this pen will be marked as transparent.
 #define TRANSPARENT_PEN 0
 
@@ -26,28 +18,28 @@ typedef struct {
   uint8_t* rom;
 
   // dimensions
-  uint8_t tile_width;
-  uint8_t tile_height;
-  uint8_t rows;
-  uint8_t cols;
+  int tile_width;
+  int tile_height;
+  int rows;
+  int cols;
 
   // tile info callback
-  void (*tile_cb)(tile_t* tile, uint16_t index);
+  void (*tile_cb)(tile_t* tile, int index);
 } tilemap_desc_t;
 
 typedef struct {
   uint8_t* rom;
 
   // dimensions
-  uint8_t tile_width;
-  uint8_t tile_height;
-  uint8_t rows;
-  uint8_t cols;
-  uint16_t width;
-  uint16_t height;
+  int tile_width;
+  int tile_height;
+  int rows;
+  int cols;
+  int width;
+  int height;
 
   // scroll offset
-  uint16_t scroll_x;
+  int scroll_x;
 
   // pixel data
   uint16_t* buffer;
@@ -56,77 +48,23 @@ typedef struct {
   tile_t* tiles;
 
   // tile info callback
-  void (*tile_cb)(tile_t* tile, uint16_t index);
+  void (*tile_cb)(tile_t* tile, int index);
 } tilemap_t;
 
-static inline void tilemap_draw_pixel(uint16_t* dst, uint8_t data, uint8_t color, uint8_t layer) {
-  // The low and high nibbles represent the bitplane values for each pixel.
-  uint8_t hi = data>>4 & 0xf;
-  uint8_t lo = data & 0xf;
-
-  uint8_t hi_mask = hi == TRANSPARENT_PEN ? 0 : layer;
-  uint8_t lo_mask = lo == TRANSPARENT_PEN ? 0 : layer;
-
-  *dst++ = hi_mask<<8 | color<<4 | hi;
-  *dst++ = lo_mask<<8 | color<<4 | lo;
-}
-
-static void tilemap_draw_8x8_tile(tilemap_t* tilemap, tile_t* tile, uint8_t col, uint8_t row, uint8_t layer) {
-  uint16_t* dst = tilemap->buffer + row*tilemap->width*8 + col*8;
-
-  for (int y = 0; y < 8; y++) {
-    int base_addr = tile->code*TILE_SIZE + y*NUM_BITPLANES;
-    uint16_t* ptr = dst + y*tilemap->width;
-
-    for (int x = 0; x < 4; x++) {
-      // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x];
-      tilemap_draw_pixel(ptr, data, tile->color, layer);
-      ptr+=2;
-    }
-  }
-
-  tile->flags ^= TILE_DIRTY;
-}
-
-static void tilemap_draw_16x16_tile(tilemap_t* tilemap, tile_t* tile, uint8_t col, uint8_t row, uint8_t layer) {
+/**
+ * Draws the tile.
+ */
+static void tilemap_draw_tile(tilemap_t* tilemap, tile_t* tile, uint8_t col, uint8_t row, uint8_t layer) {
   uint16_t* dst = tilemap->buffer + row*tilemap->width*tilemap->tile_height + col*tilemap->tile_width;
 
-  for (int y = 0; y < tilemap->tile_height/2; y++) {
-    int base_addr = tile->code*TILE_SIZE*4 + y*NUM_BITPLANES;
+  for (int y = 0; y < tilemap->tile_height; y++) {
+    int base_addr = tile->code*tilemap->tile_width*tilemap->tile_height + y*tilemap->tile_width;
     uint16_t* ptr = dst + y*tilemap->width;
 
-    for (int x = 0; x < tilemap->tile_width/4; x++) {
-      // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x];
-      tilemap_draw_pixel(ptr, data, tile->color, layer);
-      ptr+=2;
-    }
-
-    for (int x = 0; x < tilemap->tile_width/4; x++) {
-      // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x + TILE_SIZE];
-      tilemap_draw_pixel(ptr, data, tile->color, layer);
-      ptr+=2;
-    }
-  }
-
-  for (int y = 0; y < tilemap->tile_height/2; y++) {
-    int base_addr = tile->code*TILE_SIZE*4 + y*NUM_BITPLANES + TILE_SIZE*2;
-    uint16_t* ptr = dst + (y+8)*tilemap->width;
-
-    for (int x = 0; x < tilemap->tile_width/4; x++) {
-      // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x];
-      tilemap_draw_pixel(ptr, data, tile->color, layer);
-      ptr+=2;
-    }
-
-    for (int x = 0; x < tilemap->tile_width/4; x++) {
-      // Each byte in the char ROM contains the bitplane values for two pixels.
-      uint8_t data = tilemap->rom[base_addr + x + TILE_SIZE];
-      tilemap_draw_pixel(ptr, data, tile->color, layer);
-      ptr+=2;
+    for (int x = 0; x < tilemap->tile_width; x++) {
+      uint8_t pen = tilemap->rom[base_addr + x] & 0xf;
+      uint8_t pen_mask = pen == TRANSPARENT_PEN ? 0 : layer;
+      *ptr++ = pen_mask<<8 | tile->color<<4 | pen;
     }
   }
 
@@ -134,7 +72,7 @@ static void tilemap_draw_16x16_tile(tilemap_t* tilemap, tile_t* tile, uint8_t co
 }
 
 /*
- * Initialise a new tilemap instance.
+ * Initialises a new tilemap instance.
  */
 void tilemap_init(tilemap_t* tilemap, const tilemap_desc_t* desc) {
   memset(tilemap, 0, sizeof(tilemap_t));
@@ -159,7 +97,7 @@ void tilemap_shutdown(tilemap_t* tilemap) {
   tilemap->buffer = 0;
 }
 
-void tilemap_mark_tile_dirty(tilemap_t* tilemap, const uint16_t index) {
+void tilemap_mark_tile_dirty(tilemap_t* tilemap, const int index) {
   tilemap->tiles[index].flags |= TILE_DIRTY;
 }
 
@@ -173,19 +111,13 @@ void tilemap_set_scroll_x(tilemap_t* tilemap, const uint16_t value) {
 void tilemap_draw(tilemap_t* tilemap, bitmap_t* bitmap, uint16_t palette_offset, uint8_t layer) {
   for (int row = 0; row < tilemap->rows; row++) {
     for (int col = 0; col < tilemap->cols; col++) {
-      uint16_t index = row*tilemap->cols + col;
+      int index = row*tilemap->cols + col;
       tile_t* tile = &tilemap->tiles[index];
 
       if (tile->flags & TILE_DIRTY) {
-        // Update tile info.
+        // Get tile info.
         tilemap->tile_cb(tile, index);
-
-        // XXX: Dumb hack to choose between 16x16 and 8x8 tiles.
-        if (tilemap->tile_width == 16) {
-          tilemap_draw_16x16_tile(tilemap, tile, col, row, layer);
-        } else {
-          tilemap_draw_8x8_tile(tilemap, tile, col, row, layer);
-        }
+        tilemap_draw_tile(tilemap, tile, col, row, layer);
       }
     }
   }

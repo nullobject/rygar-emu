@@ -2,12 +2,6 @@
 
 #include "bitmap.h"
 
-// The number of bitplanes that define the pixel data for the 8x8 tiles.
-#define NUM_BITPLANES 4
-
-// A single 8x8 tile takes up one byte per bitplane, per row.
-#define TILE_SIZE (8*NUM_BITPLANES)
-
 // Pixels drawn with this pen will be marked as transparent.
 #define TRANSPARENT_PEN 0
 
@@ -50,7 +44,7 @@ static inline void sprite_draw_pixel(uint16_t* data, uint8_t* priority, uint8_t 
   *priority = priority_mask;
 }
 
-static void sprite_draw_8x8_tile(
+static void sprite_draw_tile(
   bitmap_t* bitmap,
   uint8_t* rom,
   uint16_t code,
@@ -65,27 +59,19 @@ static void sprite_draw_8x8_tile(
   uint8_t* priority_addr_base = bitmap->priority + sy*bitmap->width + sx;
 
   for (int y = 0; y < 8; y++) {
-    uint32_t tile_addr_base = code*TILE_SIZE + y*NUM_BITPLANES;
+    uint32_t tile_addr_base = code*64 + y*8;
     uint16_t* data_ptr = data_addr_base + y*bitmap->width;
     uint8_t* priority_ptr = priority_addr_base + y*bitmap->width;
 
     if (!flipx) {
-      for (int x = 0; (x < 4) && (sx + x < bitmap->width); x++) {
-        uint8_t data = rom[tile_addr_base + x];
-        uint8_t hi_pen = data>>4 & 0xf;
-        uint8_t lo_pen = data & 0xf;
-
-        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, hi_pen);
-        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, lo_pen);
+      for (int x = 0; (x < 8) && (sx + x < bitmap->width); x++) {
+        uint8_t pen = rom[tile_addr_base + x] & 0xf;
+        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, pen);
       }
     } else {
-      for (int x = 3; (x >= 0) && (x + sx < bitmap->width); x--) {
-        uint8_t data = rom[tile_addr_base + x];
-        uint8_t hi_pen = data>>4 & 0xf;
-        uint8_t lo_pen = data & 0xf;
-
-        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, lo_pen);
-        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, hi_pen);
+      for (int x = 7; (x >= 0) && (sx + x < bitmap->width); x--) {
+        uint8_t pen = rom[tile_addr_base + x] & 0xf;
+        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, pen);
       }
     }
   }
@@ -152,7 +138,7 @@ void sprite_draw(bitmap_t* bitmap, uint8_t* ram, uint8_t* rom) {
           int sx = xpos + 8*(flipx?(size-1-x):x);
           int sy = ypos + 8*(flipy?(size-1-y):y);
 
-          sprite_draw_8x8_tile(
+          sprite_draw_tile(
             bitmap,
             rom,
             code + sprite_tile_offset_table[y][x],
