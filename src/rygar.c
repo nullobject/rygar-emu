@@ -4,6 +4,7 @@
 #define CHIPS_IMPL
 #define COMMON_IMPL
 
+#include "bitmap.h"
 #include "chips/clk.h"
 #include "chips/z80.h"
 #include "clock.h"
@@ -335,8 +336,8 @@ static void rygar_draw() {
 
   // clear buffers
   memset(dst, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(dst[0]));
-  memset(src, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(src[0]));
   memset(priority, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(priority[0]));
+  bitmap_fill(src, 0x100, DISPLAY_WIDTH * DISPLAY_HEIGHT);
 
   // draw tile layers
   tilemap_draw(&rygar.bg_tilemap, src, priority, 0x300, 4);
@@ -347,8 +348,8 @@ static void rygar_draw() {
   sprite_draw(src, priority, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
 
   // copy 16-bit pixels to 32-bit frame buffer
-  for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-    for (int x = 0; x < DISPLAY_WIDTH; x++) {
+  for (uint16_t y = 0; y < DISPLAY_HEIGHT; y++) {
+    for (uint16_t x = 0; x < DISPLAY_WIDTH; x++) {
       *dst++ = rygar.palette[*src++];
     }
   }
