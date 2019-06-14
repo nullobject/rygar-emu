@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bitmap.h"
+#include "tile.h"
 
 // Pixels drawn with this pen will be marked as transparent.
 #define TRANSPARENT_PEN 0
@@ -34,56 +35,6 @@ static const uint8_t sprite_tile_offset_table[8][8] = {
 };
 
 /**
- * Draws a single pixel, taking into account transparency and priority.
- */
-static inline void sprite_draw_pixel(uint16_t* data, uint8_t* priority, uint8_t priority_mask, uint8_t color, uint8_t pen) {
-  // Don't draw if we're using the transparent pen.
-  if (pen == TRANSPARENT_PEN) return;
-
-  // Don't draw if there's already a pixel with higher priority.
-  if ((*priority & priority_mask) != 0) return;
-
-  *data = color<<4 | pen;
-  *priority = priority_mask;
-}
-
-static void sprite_draw_tile(
-  bitmap_t* bitmap,
-  uint8_t* rom,
-  uint16_t code,
-  uint8_t color,
-  bool flipx,
-  bool flipy,
-  int sx,
-  int sy,
-  uint8_t priority_mask
-) {
-  // bail out if the tile is completely off-screen
-  if (sx < -(TILE_WIDTH - 1) || sy < -(TILE_HEIGHT - 1) || sx >= bitmap->width || sy >= bitmap->height) return;
-
-  uint8_t* tile_addr_base = rom + (code * TILE_WIDTH * TILE_HEIGHT);
-  uint16_t* data_base = bitmap_data(bitmap, sx, sy);
-  uint8_t* priority_base = bitmap_priority(bitmap, sx, sy);
-
-  int fx = flipx ? (TILE_WIDTH - 1) : 0;
-  int fy = flipy ? (TILE_HEIGHT - 1) : 0;
-
-  for (int y = 0; y < TILE_HEIGHT; y++) {
-    // ensure we're inside the bitmap
-    if (sy+y < 0 || sy+y >= bitmap->height) continue;
-
-    for (int x = 0; x < TILE_WIDTH; x++) {
-      // ensure we're inside the bitmap
-      if (sx+x < 0 || sx+x >= bitmap->width) continue;
-
-      int offset = y*bitmap->width + x
-      uint8_t pen = tile_addr_base[(y ^ fy) * TILE_WIDTH + (x ^ fx)] & 0xf;
-      sprite_draw_pixel(data_base + offset, priority_base + offset, priority_mask, color, pen);
-    }
-  }
-}
-
-/**
  * Draws the sprites to the given bitmap.
  *
  * The sprites are stored in the following format:
@@ -105,7 +56,7 @@ static void sprite_draw_tile(
  *       6 | -------- |
  *       7 | -------- |
  */
-void sprite_draw(bitmap_t* bitmap, uint8_t* ram, uint8_t* rom) {
+void sprite_draw(bitmap_t* bitmap, uint8_t* ram, uint8_t* rom, uint8_t flags) {
   for (int addr = SPRITE_RAM_SIZE - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
     bool visible = ram[addr] & 0x04;
 
@@ -122,16 +73,16 @@ void sprite_draw(bitmap_t* bitmap, uint8_t* ram, uint8_t* rom) {
       // The size is specified in 8x8 tiles (8x8, 16x16, 32x32, 64x64).
       size = 1 << size;
 
-      uint8_t flags = ram[addr+3];
-			int xpos = ram[addr+5] - ((flags & 0x10) << 4);
-			int ypos = ram[addr+4] - ((flags & 0x20) << 3);
+      uint8_t b3 = ram[addr+3];
+			int xpos = ram[addr+5] - ((b3 & 0x10) << 4);
+			int ypos = ram[addr+4] - ((b3 & 0x20) << 3);
 
 			bool flipx = bank & 0x01;
 			bool flipy = bank & 0x02;
-      uint8_t color = flags & 0x0f;
+      uint8_t color = b3 & 0x0f;
       uint8_t priority_mask;
 
-			switch (flags>>6) {
+			switch (b3>>6) {
 				default:
 				case 0x0: priority_mask = 0; break;
 				case 0x1: priority_mask = 0x1; break; // obscured by text layer
@@ -144,14 +95,17 @@ void sprite_draw(bitmap_t* bitmap, uint8_t* ram, uint8_t* rom) {
           int sx = xpos + 8*(flipx?(size-1-x):x);
           int sy = ypos + 8*(flipy?(size-1-y):y);
 
-          sprite_draw_tile(
+          tile_draw(
             bitmap,
             rom,
             code + sprite_tile_offset_table[y][x],
             color,
+            0, // palette offset
             flipx, flipy,
             sx, sy,
-            priority_mask
+            TILE_WIDTH, TILE_HEIGHT,
+            priority_mask,
+            flags
           );
         }
       }

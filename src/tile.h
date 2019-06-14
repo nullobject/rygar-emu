@@ -1,11 +1,25 @@
 #pragma once
 
-#define STEP2(start, step)  (start), (start)+(step)
-#define STEP4(start, step)  STEP2(start, step), STEP2((start)+2*(step), step)
-#define STEP8(start, step)  STEP4(start, step), STEP4((start)+4*(step), step)
+// step macros
+#define STEP2(start, step) (start), (start)+(step)
+#define STEP4(start, step) STEP2(start, step), STEP2((start)+2*(step), step)
+#define STEP8(start, step) STEP4(start, step), STEP4((start)+4*(step), step)
 #define STEP16(start, step) STEP8(start, step), STEP8((start)+8*(step), step)
 #define STEP32(start, step) STEP16(start, step), STEP16((start)+16*(step), step)
 #define STEP64(start, step) STEP32(start, step), STEP32((start)+32*(step), step)
+
+// flags
+#define TILE_LAYER_MASK 0x0f
+
+#define TILE_LAYER0 0x01
+#define TILE_LAYER1 0x02
+#define TILE_LAYER2 0x04
+#define TILE_LAYER3 0x08
+
+#define TILE_OPAQUE 0x80
+
+// Pixels drawn with this pen will be marked as transparent.
+#define TRANSPARENT_PEN 0
 
 typedef struct {
   // tile dimensions
@@ -62,6 +76,60 @@ void tile_decode(const tile_decode_desc_t* desc, uint8_t *src, uint8_t *dst, int
           }
 				}
 			}
+    }
+  }
+}
+
+static inline void tile_draw_pixel(uint16_t* data, uint8_t* priority, uint8_t priority_mask, uint16_t palette_offset, uint8_t color, uint8_t pen, uint8_t flags) {
+  // Don't draw if we're using the transparent pen.
+  if ((pen == TRANSPARENT_PEN) && !(flags & TILE_OPAQUE)) return;
+
+  // Don't draw if there's already a pixel with higher priority.
+  if ((*priority & priority_mask) != 0) return;
+
+  *data = palette_offset | color<<4 | pen;
+  *priority = pen != TRANSPARENT_PEN ? (flags & TILE_LAYER_MASK) : 0;
+}
+
+/*
+ * Draws the given tile to a bitmap.
+ *
+ * TODO: Allow forcing opaque drawing.
+ */
+void tile_draw(
+  bitmap_t* bitmap,
+  uint8_t* rom,
+  uint16_t code,
+  uint8_t color,
+  uint16_t palette_offset,
+  bool flip_x, bool flip_y,
+  int sx, int sy,
+  int width, int height,
+  uint8_t priority_mask,
+  uint8_t flags
+) {
+  // bail out if the tile is completely off-screen
+  if (sx < -(width - 1) || sy < -(height - 1) || sx >= bitmap->width || sy >= bitmap->height) return;
+
+  uint8_t* tile_addr_base = rom + (code * width * height);
+  uint16_t* data_base = bitmap_data(bitmap, sx, sy);
+  uint8_t* priority_base = bitmap_priority(bitmap, sx, sy);
+
+  int flip_mask_x = flip_x ? (width - 1) : 0;
+  int flip_mask_y = flip_y ? (height - 1) : 0;
+
+  for (int y = 0; y < height; y++) {
+    // ensure we're inside the bitmap
+    if (sy+y < 0 || sy+y >= bitmap->height) continue;
+
+    for (int x = 0; x < width; x++) {
+      // ensure we're inside the bitmap
+      if (sx+x < 0 || sx+x >= bitmap->width) continue;
+
+      int offset = y*bitmap->width + x;
+      uint8_t pen = tile_addr_base[(y ^ flip_mask_y) * width + (x ^ flip_mask_x)] & 0xf;
+
+      tile_draw_pixel(data_base + offset, priority_base + offset, priority_mask, palette_offset, color, pen, flags);
     }
   }
 }

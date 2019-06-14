@@ -379,12 +379,12 @@ static void rygar_draw() {
   bitmap_fill(bitmap, 0x100);
 
   // draw tile layers
-  tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, 4);
-  tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, 2);
-  tilemap_draw(&rygar.tx_tilemap, bitmap, 0x100, 1);
+  tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, TILE_LAYER2);
+  tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, TILE_LAYER1);
+  tilemap_draw(&rygar.tx_tilemap, bitmap, 0x100, TILE_LAYER0);
 
   // draw sprite layer
-  sprite_draw(bitmap, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
+  sprite_draw(bitmap, &rygar.main.sprite_ram, &rygar.main.sprite_rom, TILE_LAYER0);
 
   // copy 16-bit pixels to 32-bit frame buffer
   uint16_t* data = bitmap->data + 16*bitmap->width;

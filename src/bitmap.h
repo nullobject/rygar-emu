@@ -45,6 +45,9 @@ void bitmap_fill(bitmap_t* bitmap, uint16_t color) {
   }
 }
 
+/**
+ * Copies a bitmap, preserving priority.
+ */
 void bitmap_copy(bitmap_t* src, bitmap_t* dst, int scroll_x) {
   uint16_t* data = dst->data;
   uint8_t* priority = dst->priority;
