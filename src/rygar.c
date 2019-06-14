@@ -54,7 +54,7 @@
 #define BANK_WINDOW_START 0xf000
 #define BANK_WINDOW_END (BANK_WINDOW_START + BANK_WINDOW_SIZE - 1)
 
-// write
+/* write */
 #define FG_SCROLL_START 0xf800
 #define FG_SCROLL_END 0xf802
 #define BG_SCROLL_START 0xf803
@@ -63,12 +63,14 @@
 #define FLIP_SCREEN 0xf807
 #define BANK_SWITCH 0xf808
 
-#define DISPLAY_WIDTH 256
-#define DISPLAY_HEIGHT 256
+#define BUFFER_WIDTH 256
+#define BUFFER_HEIGHT 256
+#define SCREEN_WIDTH 256
+#define SCREEN_HEIGHT 224
 
-// The tilemap horizontal scroll values are offset by a fixed value, due to
-// hardware timing constraints, etc. We don't need an adjusted scroll value, so
-// we need to correct it.
+/* The tilemap horizontal scroll values are all offset by a fixed value,
+ * probably because of hardware timing constraints, etc. We don't want to
+ * include this offset in our scroll values, so we must correct it. */
 #define SCROLL_OFFSET 48
 
 #define CPU_FREQ 4000000
@@ -80,7 +82,7 @@ typedef struct {
   z80_t cpu;
   mem_t mem;
 
-  // ram
+  /* ram */
   uint8_t work_ram[WORK_RAM_SIZE];
   uint8_t tx_ram[TX_RAM_SIZE];
   uint8_t fg_ram[FG_RAM_SIZE];
@@ -88,17 +90,17 @@ typedef struct {
   uint8_t sprite_ram[SPRITE_RAM_SIZE];
   uint8_t palette_ram[PALETTE_RAM_SIZE];
 
-  // bank switched rom
+  /* bank switched rom */
   uint8_t banked_rom[BANK_SIZE];
   uint8_t current_bank;
 
-  // tile roms
+  /* tile roms */
   uint8_t tx_rom[TX_ROM_SIZE];
   uint8_t fg_rom[FG_ROM_SIZE];
   uint8_t bg_rom[BG_ROM_SIZE];
   uint8_t sprite_rom[SPRITE_ROM_SIZE];
 
-  // tilemap scroll offset registers
+  /* tilemap scroll offset registers */
   uint8_t fg_scroll[3];
   uint8_t bg_scroll[3];
 } mainboard_t;
@@ -108,15 +110,15 @@ typedef struct {
 
   bitmap_t bitmap;
 
-  // tilemaps
+  /* tilemaps */
   tilemap_t tx_tilemap;
   tilemap_t fg_tilemap;
   tilemap_t bg_tilemap;
 
-  // 32-bit RGBA color palette cache
+  /* 32-bit RGBA color palette cache */
   uint32_t palette[1024];
 
-  // counters
+  /* counters */
   int vsync_count;
   int vblank_count;
 } rygar_t;
@@ -133,17 +135,17 @@ rygar_t rygar;
  * pixel in the video decoding code.
  */
 static inline void rygar_update_palette(uint16_t addr, uint8_t data) {
-  uint16_t pal_index = addr>>1;
+  uint16_t pal_index = addr >> 1;
   uint32_t c = rygar.palette[pal_index];
 
   if (addr & 1) {
-    // odd addresses are the RRRRGGGG part
-    uint8_t r = (data & 0xf0) | (data>>4 & 0x0f);
-    uint8_t g = (data & 0x0f) | (data<<4 & 0xf0);
-    c = 0xff000000 | (c & 0x00ff0000) | g<<8 | r;
+    /* odd addresses are the RRRRGGGG part */
+    uint8_t r = (data & 0xf0) | ((data >> 4) & 0x0f);
+    uint8_t g = (data & 0x0f) | ((data << 4) & 0xf0);
+    c = 0xff000000 | (c & 0x00ff0000) | g << 8 | r;
   } else {
-    // even addresses are the xxxxBBBB part
-    uint8_t b = (data & 0x0f) | (data<<4 & 0xf0);
+    /* even addresses are the xxxxBBBB part */
+    uint8_t b = (data & 0x0f) | ((data << 4) & 0xf0);
     c = 0xff000000 | (c & 0x0000ffff) | b << 16;
   }
 
@@ -153,7 +155,7 @@ static inline void rygar_update_palette(uint16_t addr, uint8_t data) {
 /**
  * This callback function is called for every CPU tick.
  */
-static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
+static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void *user_data) {
   rygar.vsync_count -= num_ticks;
 
   if (rygar.vsync_count <= 0) {
@@ -163,7 +165,7 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
 
   if (rygar.vblank_count > 0) {
     rygar.vblank_count -= num_ticks;
-    pins |= Z80_INT; // activate INT pin during VBLANK
+    pins |= Z80_INT; /* activate INT pin during VBLANK */
   } else {
     rygar.vblank_count = 0;
   }
@@ -189,13 +191,13 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
       } else if (BETWEEN(addr, FG_SCROLL_START, FG_SCROLL_END)) {
         uint8_t offset = addr - FG_SCROLL_START;
         rygar.main.fg_scroll[offset] = data;
-        tilemap_set_scroll_x(&rygar.fg_tilemap, (rygar.main.fg_scroll[1]<<8 | rygar.main.fg_scroll[0]) + SCROLL_OFFSET);
+        tilemap_set_scroll_x(&rygar.fg_tilemap, (rygar.main.fg_scroll[1] << 8 | rygar.main.fg_scroll[0]) + SCROLL_OFFSET);
       } else if (BETWEEN(addr, BG_SCROLL_START, BG_SCROLL_END)) {
         uint8_t offset = addr - BG_SCROLL_START;
         rygar.main.bg_scroll[offset] = data;
-        tilemap_set_scroll_x(&rygar.bg_tilemap, (rygar.main.bg_scroll[1]<<8 | rygar.main.bg_scroll[0]) + SCROLL_OFFSET);
+        tilemap_set_scroll_x(&rygar.bg_tilemap, (rygar.main.bg_scroll[1] << 8 | rygar.main.bg_scroll[0]) + SCROLL_OFFSET);
       } else if (addr == BANK_SWITCH) {
-        rygar.main.current_bank = data >> 3; // bank addressed by DO3-DO6 in schematic
+        rygar.main.current_bank = data >> 3; /* bank addressed by DO3-DO6 in schematic */
       }
     } else if (pins & Z80_RD) {
       if (addr <= RAM_END) {
@@ -208,47 +210,47 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void* user_data) {
       }
     }
   } else if ((pins & Z80_IORQ) && (pins & Z80_M1)) {
-    // Clear interrupt.
+    /* clear interrupt */
     pins &= ~Z80_INT;
   }
 
   return pins;
 }
 
-static void tx_tile_info(tile_t* tile, int index) {
+static void tx_tile_info(tile_t *tile, int index) {
   uint8_t lo = rygar.main.tx_ram[index];
   uint8_t hi = rygar.main.tx_ram[index + 0x400];
 
-  // The tile code is a 10-bit value, represented by the low byte and the two
-  // LSBs of the high byte.
-  tile->code = (hi & 0x03)<<8 | lo;
+  /* the tile code is a 10-bit value, represented by the low byte and the
+   * two LSBs of the high byte */
+  tile->code = (hi & 0x03) << 8 | lo;
 
-  // The four MSBs of the high byte represent the color value.
-  tile->color = hi>>4;
+  /* the four MSBs of the high byte represent the color value */
+  tile->color = hi >> 4;
 }
 
-static void fg_tile_info(tile_t* tile, int index) {
+static void fg_tile_info(tile_t *tile, int index) {
   uint8_t lo = rygar.main.fg_ram[index];
   uint8_t hi = rygar.main.fg_ram[index + 0x200];
 
-  // The tile code is a 11-bit value, represented by the low byte and the three
-  // LSBs of the high byte.
-  tile->code = (hi & 0x07)<<8 | lo;
+  /* the tile code is a 11-bit value, represented by the low byte and the three
+   * LSBs of the high byte */
+  tile->code = (hi & 0x07) << 8 | lo;
 
-  // The four MSBs of the high byte represent the color value.
-  tile->color = hi>>4;
+  /* the four MSBs of the high byte represent the color value */
+  tile->color = hi >> 4;
 }
 
-static void bg_tile_info(tile_t* tile, int index) {
+static void bg_tile_info(tile_t *tile, int index) {
   uint8_t lo = rygar.main.bg_ram[index];
   uint8_t hi = rygar.main.bg_ram[index + 0x200];
 
-  // The tile code is a 11-bit value, represented by the low byte and the three
-  // LSBs of the high byte.
-  tile->code = (hi & 0x07)<<8 | lo;
+  /* the tile code is a 11-bit value, represented by the low byte and the three
+   * LSBs of the high byte */
+  tile->code = (hi & 0x07) << 8 | lo;
 
-  // The four MSBs of the high byte represent the color value.
-  tile->color = hi>>4;
+  /* the four MSBs of the high byte represent the color value */
+  tile->color = hi >> 4;
 }
 
 /**
@@ -257,31 +259,33 @@ static void bg_tile_info(tile_t* tile, int index) {
 static void rygar_decode_tiles() {
   uint8_t tmp[0x20000];
 
-  // decodes a 8x8 tile
+  /* decode descriptor for a 8x8 tile */
   tile_decode_desc_t tile_decode_8x8 = {
     .tile_width = 8,
     .tile_height = 8,
     .planes = 4,
     .plane_offsets = { STEP4(0, 1) },
-	  .x_offsets = { STEP8(0, 4) },
-	  .y_offsets = { STEP8(0, 4*8) },
-    .tile_size = 4*8*8
+    .x_offsets = { STEP8(0, 4) },
+    .y_offsets = { STEP8(0, 4 * 8) },
+    .tile_size = 4 * 8 * 8
   };
 
-  // decodes a 16x16 tile, made up of four 8x8 tiles
+  /* decode descriptor for a 16x16 tile, made up of four 8x8 tiles */
   tile_decode_desc_t tile_decode_16x16 = {
     .tile_width = 16,
     .tile_height = 16,
     .planes = 4,
     .plane_offsets = { STEP4(0, 1) },
-	  .x_offsets = { STEP8(0, 4), STEP8(4*8*8, 4) },
-	  .y_offsets = { STEP8(0, 4*8), STEP8(4*8*8*2, 4*8) },
-    .tile_size = 4*4*8*8
+    .x_offsets = { STEP8(0, 4), STEP8(4 * 8 * 8, 4) },
+    .y_offsets = { STEP8(0, 4 * 8), STEP8(4 * 8 * 8 * 2, 4 * 8) },
+    .tile_size = 4 * 4 * 8 * 8
   };
 
-  // tx rom
+  /* tx rom */
   memcpy(&tmp[0x00000], dump_cpu_8k, 0x8000);
+
   tile_decode(&tile_decode_8x8, &tmp, &rygar.main.tx_rom, 1024);
+
   tilemap_init(&rygar.tx_tilemap, &(tilemap_desc_t) {
     .tile_cb = tx_tile_info,
     .rom = rygar.main.tx_rom,
@@ -291,12 +295,14 @@ static void rygar_decode_tiles() {
     .rows = 32
   });
 
-  // fg rom
+  /* fg rom */
   memcpy(&tmp[0x00000], dump_vid_6p, 0x8000);
   memcpy(&tmp[0x08000], dump_vid_6o, 0x8000);
   memcpy(&tmp[0x10000], dump_vid_6n, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6l, 0x8000);
+
   tile_decode(&tile_decode_16x16, &tmp, &rygar.main.fg_rom, 1024);
+
   tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t) {
     .tile_cb = fg_tile_info,
     .rom = rygar.main.fg_rom,
@@ -306,12 +312,14 @@ static void rygar_decode_tiles() {
     .rows = 16
   });
 
-  // bg rom
+  /* bg rom */
   memcpy(&tmp[0x00000], dump_vid_6f, 0x8000);
   memcpy(&tmp[0x08000], dump_vid_6e, 0x8000);
   memcpy(&tmp[0x10000], dump_vid_6c, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6b, 0x8000);
+
   tile_decode(&tile_decode_16x16, &tmp, &rygar.main.bg_rom, 1024);
+
   tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t) {
     .tile_cb = bg_tile_info,
     .rom = rygar.main.bg_rom,
@@ -321,11 +329,12 @@ static void rygar_decode_tiles() {
     .rows = 16
   });
 
-  // sprite rom
+  /* sprite rom */
   memcpy(&tmp[0x00000], dump_vid_6k, 0x8000);
   memcpy(&tmp[0x08000], dump_vid_6j, 0x8000);
   memcpy(&tmp[0x10000], dump_vid_6h, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6g, 0x8000);
+
   tile_decode(&tile_decode_8x8, &tmp, &rygar.main.sprite_rom, 4096);
 }
 
@@ -340,9 +349,9 @@ static void rygar_init() {
   clk_init(&rygar.main.clk, CPU_FREQ);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
   mem_init(&rygar.main.mem);
-  bitmap_init(&rygar.bitmap, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+  bitmap_init(&rygar.bitmap, BUFFER_WIDTH, BUFFER_HEIGHT);
 
-  // main memory
+  /* main memory */
   mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
   mem_map_rom(&rygar.main.mem, 0, 0x8000, 0x4000, dump_cpu_5m);
   mem_map_ram(&rygar.main.mem, 0, WORK_RAM_START, WORK_RAM_SIZE, rygar.main.work_ram);
@@ -352,7 +361,7 @@ static void rygar_init() {
   mem_map_ram(&rygar.main.mem, 0, SPRITE_RAM_START, SPRITE_RAM_SIZE, rygar.main.sprite_ram);
   mem_map_ram(&rygar.main.mem, 0, PALETTE_RAM_START, PALETTE_RAM_SIZE, rygar.main.palette_ram);
 
-  // banked rom
+  /* banked rom */
   memcpy(&rygar.main.banked_rom[0x00000], dump_cpu_5j, 0x8000);
 
   rygar_decode_tiles();
@@ -369,29 +378,29 @@ static void rygar_shutdown() {
  * Draws the graphics layers to the frame buffer.
  */
 static void rygar_draw() {
-  // clear frame buffer
-  uint32_t* buffer = gfx_framebuffer();
-  memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(uint32_t));
+  /* clear frame buffer */
+  uint32_t *buffer = gfx_framebuffer();
+  memset(buffer, 0, BUFFER_WIDTH * BUFFER_HEIGHT * sizeof(uint32_t));
 
-  bitmap_t* bitmap = &rygar.bitmap;
+  bitmap_t *bitmap = &rygar.bitmap;
   bitmap_fill(bitmap, 0x100);
 
-  // draw tile layers
-  tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, 4);
-  tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, 2);
-  tilemap_draw(&rygar.tx_tilemap, bitmap, 0x100, 1);
+  /* draw layers */
+  tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, TILE_LAYER3);
+  tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, TILE_LAYER2);
+  tilemap_draw(&rygar.tx_tilemap, bitmap, 0x100, TILE_LAYER1);
+  sprite_draw(bitmap, &rygar.main.sprite_ram, &rygar.main.sprite_rom, 0, TILE_LAYER0);
 
-  // draw sprite layer
-  sprite_draw(bitmap, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
-
-  // copy 16-bit pixels to 32-bit frame buffer
-  uint16_t* data = bitmap->data;
-  for (uint32_t i = 0; i < bitmap->width * bitmap->height; i++) {
+  /* copy 16-bit pixels to 32-bit frame buffer */
+  uint16_t *data = bitmap->data + (16 * bitmap->width);
+  for (uint32_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
     *buffer++ = rygar.palette[*data++];
   }
 }
 
 /**
+ * rygar_exec
+ *
  * Runs the emulation for one frame.
  */
 static void rygar_exec(uint32_t delta) {
@@ -418,10 +427,10 @@ static void app_init() {
 
 static void app_frame() {
   rygar_exec(clock_frame_time());
-  gfx_draw(DISPLAY_WIDTH, DISPLAY_HEIGHT);
+  gfx_draw(SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
-static void app_input(const sapp_event* event) {
+static void app_input(const sapp_event *event) {
 }
 
 static void app_cleanup() {
@@ -429,14 +438,14 @@ static void app_cleanup() {
   gfx_shutdown();
 }
 
-sapp_desc sokol_main(int argc, char* argv[]) {
+sapp_desc sokol_main(int argc, char *argv[]) {
   return (sapp_desc) {
     .init_cb = app_init,
     .frame_cb = app_frame,
     .event_cb = app_input,
     .cleanup_cb = app_cleanup,
-    .width = DISPLAY_WIDTH * 4,
-    .height = DISPLAY_HEIGHT * 3,
+    .width = SCREEN_WIDTH * 4,
+    .height = SCREEN_HEIGHT * 3,
     .window_title = "Rygar"
   };
 }
