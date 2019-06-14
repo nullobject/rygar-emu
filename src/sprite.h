@@ -10,6 +10,9 @@
 // sprite size in bytes
 #define SPRITE_SIZE 8
 
+#define TILE_WIDTH 8
+#define TILE_HEIGHT 8
+
 #define SPRITE_RAM_SIZE 0x800
 
 // There are four possible sprite sizes: 8x8, 16x16, 32x32, and 64x64. All
@@ -50,30 +53,34 @@ static void sprite_draw_tile(
   uint16_t code,
   uint8_t color,
   uint8_t priority_mask,
-  uint8_t flipx,
-  uint8_t flipy,
-  uint16_t sx,
-  uint16_t sy
+  bool flipx,
+  bool flipy,
+  int sx,
+  int sy
 ) {
-  uint16_t* data_addr_base = bitmap->data + sy*bitmap->width + sx;
-  uint8_t* priority_addr_base = bitmap->priority + sy*bitmap->width + sx;
+  if (sx < -(TILE_WIDTH - 1) || sy < -(TILE_HEIGHT - 1) || sx >= bitmap->width || sy >= bitmap->height) return;
 
-  for (int y = 0; y < 8; y++) {
-    uint32_t tile_addr_base = code*64 + y*8;
-    uint16_t* data_ptr = data_addr_base + y*bitmap->width;
-    uint8_t* priority_ptr = priority_addr_base + y*bitmap->width;
+  uint8_t* tile_addr_base = rom + (code*TILE_WIDTH*TILE_HEIGHT);
 
-    if (!flipx) {
-      for (int x = 0; (x < 8) && (sx + x < bitmap->width); x++) {
-        uint8_t pen = rom[tile_addr_base + x] & 0xf;
-        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, pen);
-      }
-    } else {
-      for (int x = 7; (x >= 0) && (sx + x < bitmap->width); x--) {
-        uint8_t pen = rom[tile_addr_base + x] & 0xf;
-        sprite_draw_pixel(data_ptr++, priority_ptr++, priority_mask, color, pen);
-      }
+  int fx = flipx ? (TILE_WIDTH - 1) : 0;
+  int fy = flipy ? (TILE_HEIGHT - 1) : 0;
+
+  for (int y = 0; y < TILE_HEIGHT; y++, sy++) {
+    // ensure we're inside the bitmap
+    if (sy < 0 || sy >= bitmap->height) continue;
+
+    uint16_t* data_ptr = bitmap->data + sy*bitmap->width + sx;
+    uint8_t* priority_ptr = bitmap->priority + sy*bitmap->width + sx;
+
+    for (int x = 0; x < TILE_WIDTH; x++, sx++) {
+      // ensure we're inside the bitmap
+      if (sx < 0 || sx >= bitmap->width) continue;
+
+      uint8_t pen = tile_addr_base[(y ^ fy) * TILE_WIDTH + (x ^ fx)] & 0xf;
+      sprite_draw_pixel(data_ptr + x, priority_ptr + x, priority_mask, color, pen);
     }
+
+    sx -= TILE_WIDTH;
   }
 }
 
@@ -106,7 +113,7 @@ void sprite_draw(bitmap_t* bitmap, uint8_t* ram, uint8_t* rom) {
 		if (visible) {
       uint8_t bank = ram[addr];
       uint16_t code = ram[addr+1] | (bank & 0xf0)<<4;
-      uint8_t size = ram[addr+2] & 0x03;
+      int size = ram[addr+2] & 0x03;
 
       // Ensure the lower sprite code bits are masked. This is required because
       // we add the tile code offset from the layout lookup table for the
@@ -117,11 +124,11 @@ void sprite_draw(bitmap_t* bitmap, uint8_t* ram, uint8_t* rom) {
       size = 1 << size;
 
       uint8_t flags = ram[addr+3];
-			uint16_t xpos = ram[addr+5] - ((flags & 0x10) << 0x04);
-			uint16_t ypos = ram[addr+4] - ((flags & 0x20) << 0x03);
+			int xpos = ram[addr+5] - ((flags & 0x10) << 4);
+			int ypos = ram[addr+4] - ((flags & 0x20) << 3);
 
-			uint8_t flipx = bank & 0x01;
-			uint8_t flipy = bank & 0x02;
+			bool flipx = bank & 0x01;
+			bool flipy = bank & 0x02;
       uint8_t color = flags & 0x0f;
       uint8_t priority_mask;
 
