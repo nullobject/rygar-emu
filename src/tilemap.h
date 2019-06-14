@@ -35,14 +35,12 @@ typedef struct {
   int tile_height;
   int rows;
   int cols;
-  int width;
-  int height;
 
   // scroll offset
   int scroll_x;
 
   // pixel data
-  uint16_t* buffer;
+  bitmap_t bitmap;
 
   // tile data
   tile_t* tiles;
@@ -54,27 +52,30 @@ typedef struct {
 /**
  * Draws the tile.
  */
-static void tilemap_draw_tile(tilemap_t* tilemap, tile_t* tile, uint8_t col, uint8_t row, uint8_t layer) {
-  uint16_t* dst = tilemap->buffer + row*tilemap->width*tilemap->tile_height + col*tilemap->tile_width;
+static void tilemap_draw_tile(tilemap_t* tilemap, tile_t* tile, uint16_t palette_offset, int sx, int sy, uint8_t layer) {
+  uint16_t* data_addr_base = tilemap->bitmap.data + sy*tilemap->bitmap.width + sx;
+  uint8_t* priority_addr_base = tilemap->bitmap.priority + sy*tilemap->bitmap.width + sx;
 
   for (int y = 0; y < tilemap->tile_height; y++) {
     int base_addr = tile->code*tilemap->tile_width*tilemap->tile_height + y*tilemap->tile_width;
-    uint16_t* ptr = dst + y*tilemap->width;
+    uint16_t* data_ptr = data_addr_base + y*tilemap->bitmap.width;
+    uint8_t* priority_ptr = priority_addr_base + y*tilemap->bitmap.width;
 
     for (int x = 0; x < tilemap->tile_width; x++) {
       uint8_t pen = tilemap->rom[base_addr + x] & 0xf;
-      uint8_t pen_mask = pen == TRANSPARENT_PEN ? 0 : layer;
-      *ptr++ = pen_mask<<8 | tile->color<<4 | pen;
+      *priority_ptr++ = pen != TRANSPARENT_PEN ? layer : 0;
+      *data_ptr++ = palette_offset | tile->color<<4 | pen;
     }
   }
-
-  tile->flags ^= TILE_DIRTY;
 }
 
 /*
  * Initialises a new tilemap instance.
  */
 void tilemap_init(tilemap_t* tilemap, const tilemap_desc_t* desc) {
+  int width = desc->tile_width * desc->cols;
+  int height = desc->tile_height * desc->rows;
+
   memset(tilemap, 0, sizeof(tilemap_t));
 
   tilemap->rom = desc->rom;
@@ -82,19 +83,17 @@ void tilemap_init(tilemap_t* tilemap, const tilemap_desc_t* desc) {
   tilemap->tile_height = desc->tile_height;
   tilemap->cols = desc->cols;
   tilemap->rows = desc->rows;
-  tilemap->width = desc->tile_width * desc->cols;
-  tilemap->height = desc->tile_height * desc->rows;
   tilemap->tile_cb = desc->tile_cb;
 
   tilemap->tiles = malloc(tilemap->cols * tilemap->rows * sizeof(tile_t));
-  tilemap->buffer = malloc(tilemap->width * tilemap->height * sizeof(uint16_t));
+
+  bitmap_init(&tilemap->bitmap, width, height);
 }
 
 void tilemap_shutdown(tilemap_t* tilemap) {
   free(tilemap->tiles);
-  free(tilemap->buffer);
   tilemap->tiles = 0;
-  tilemap->buffer = 0;
+  bitmap_shutdown(&tilemap->bitmap);
 }
 
 void tilemap_mark_tile_dirty(tilemap_t* tilemap, const int index) {
@@ -106,7 +105,7 @@ void tilemap_set_scroll_x(tilemap_t* tilemap, const uint16_t value) {
 }
 
 /**
- * Draws the tilemap to the given buffer.
+ * Draws the tilemap to the given bitmap.
  */
 void tilemap_draw(tilemap_t* tilemap, bitmap_t* bitmap, uint16_t palette_offset, uint8_t layer) {
   for (int row = 0; row < tilemap->rows; row++) {
@@ -115,31 +114,14 @@ void tilemap_draw(tilemap_t* tilemap, bitmap_t* bitmap, uint16_t palette_offset,
       tile_t* tile = &tilemap->tiles[index];
 
       if (tile->flags & TILE_DIRTY) {
-        // Get tile info.
         tilemap->tile_cb(tile, index);
-        tilemap_draw_tile(tilemap, tile, col, row, layer);
+        int sx = col*tilemap->tile_width;
+        int sy = row*tilemap->tile_height;
+        tilemap_draw_tile(tilemap, tile, palette_offset, sx, sy, layer);
+        tile->flags ^= TILE_DIRTY;
       }
     }
   }
 
-  uint16_t* data = bitmap->data;
-  uint8_t* priority = bitmap->priority;
-
-  for (int y = 0; y < bitmap->height; y++) {
-    for (int x = 0; x < bitmap->width; x++) {
-      // Calculate the wrapped x coordinate in tilemap space. Wrapping occurs
-      // when the visible area is outside of the tilemap.
-      uint32_t wrapped_x = (x + tilemap->scroll_x) % tilemap->width;
-      uint32_t addr = y*tilemap->width + wrapped_x;
-      uint16_t pixel = tilemap->buffer[addr];
-
-      if (pixel & 0x0f00) {
-        *data = (pixel&0xff) + palette_offset;
-        *priority = pixel>>8;
-      }
-
-      data++;
-      priority++;
-    }
-  }
+  bitmap_copy(&tilemap->bitmap, bitmap, tilemap->scroll_x);
 }

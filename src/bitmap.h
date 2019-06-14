@@ -1,9 +1,14 @@
 #pragma once
 
 typedef struct {
+  // dimensions
   int width;
   int height;
+
+  // bitmap data
   uint16_t* data;
+
+  // priority map
   uint8_t* priority;
 } bitmap_t;
 
@@ -29,5 +34,27 @@ void bitmap_fill(bitmap_t* bitmap, uint16_t color) {
   for (int i = 0; i < bitmap->width * bitmap->height; i++) {
     *data++ = color;
     *priority++ = 0;
+  }
+}
+
+void bitmap_copy(bitmap_t* src, bitmap_t* dst, int scroll_x) {
+  uint16_t* data = dst->data;
+  uint8_t* priority = dst->priority;
+
+  for (int y = 0; y < dst->height; y++) {
+    for (int x = 0; x < dst->width; x++) {
+      // Calculate the wrapped x coordinate in tilemap space. Wrapping occurs
+      // when the visible area is outside of the tilemap.
+      uint32_t wrapped_x = (x + scroll_x) % src->width;
+      uint32_t addr = y*src->width + wrapped_x;
+
+      if (src->priority[addr]) {
+        *data = src->data[addr];
+        *priority = src->priority[addr];
+      }
+
+      data++;
+      priority++;
+    }
   }
 }
