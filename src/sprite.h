@@ -58,30 +58,28 @@ static void sprite_draw_tile(
   int sy,
   uint8_t priority_mask
 ) {
-  // bail out if the tile is off-screen
+  // bail out if the tile is completely off-screen
   if (sx < -(TILE_WIDTH - 1) || sy < -(TILE_HEIGHT - 1) || sx >= bitmap->width || sy >= bitmap->height) return;
 
   uint8_t* tile_addr_base = rom + (code * TILE_WIDTH * TILE_HEIGHT);
+  uint16_t* data_base = bitmap_data(bitmap, sx, sy);
+  uint8_t* priority_base = bitmap_priority(bitmap, sx, sy);
 
   int fx = flipx ? (TILE_WIDTH - 1) : 0;
   int fy = flipy ? (TILE_HEIGHT - 1) : 0;
 
-  for (int y = 0; y < TILE_HEIGHT; y++, sy++) {
+  for (int y = 0; y < TILE_HEIGHT; y++) {
     // ensure we're inside the bitmap
-    if (sy < 0 || sy >= bitmap->height) continue;
+    if (sy+y < 0 || sy+y >= bitmap->height) continue;
 
-    uint16_t* data_ptr = bitmap_data(bitmap, sx, sy);
-    uint8_t* priority_ptr = bitmap_priority(bitmap, sx, sy);
-
-    for (int x = 0; x < TILE_WIDTH; x++, sx++) {
+    for (int x = 0; x < TILE_WIDTH; x++) {
       // ensure we're inside the bitmap
-      if (sx < 0 || sx >= bitmap->width) continue;
+      if (sx+x < 0 || sx+x >= bitmap->width) continue;
 
+      int offset = y*bitmap->width + x
       uint8_t pen = tile_addr_base[(y ^ fy) * TILE_WIDTH + (x ^ fx)] & 0xf;
-      sprite_draw_pixel(data_ptr + x, priority_ptr + x, priority_mask, color, pen);
+      sprite_draw_pixel(data_base + offset, priority_base + offset, priority_mask, color, pen);
     }
-
-    sx -= TILE_WIDTH;
   }
 }
 

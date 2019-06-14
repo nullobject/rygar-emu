@@ -1,8 +1,5 @@
 #pragma once
 
-#define BITMAP_DATA(bitmap, x, y) (bitmap->data + y*bitmap->width + x)
-#define BITMAP_PRIORITY(bitmap, x, y) (bitmap->priority + y*bitmap->width + x)
-
 typedef struct {
   // dimensions
   int width;
