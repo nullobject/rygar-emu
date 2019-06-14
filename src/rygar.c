@@ -54,7 +54,16 @@
 #define BANK_WINDOW_START 0xf000
 #define BANK_WINDOW_END (BANK_WINDOW_START + BANK_WINDOW_SIZE - 1)
 
-/* write */
+/* inputs */
+#define JOYSTICK1 0xf800
+#define BUTTONS1 0xf801
+#define JOYSTICK2 0xf802
+#define BUTTONS2 0xf803
+#define SYS1 0xf804
+#define SYS2 0xf805
+#define SYS3 0xf80f
+
+/* outputs */
 #define FG_SCROLL_START 0xf800
 #define FG_SCROLL_END 0xf802
 #define BG_SCROLL_START 0xf803
@@ -65,6 +74,7 @@
 
 #define BUFFER_WIDTH 256
 #define BUFFER_HEIGHT 256
+
 #define SCREEN_WIDTH 256
 #define SCREEN_HEIGHT 224
 
@@ -99,6 +109,11 @@ typedef struct {
   uint8_t fg_rom[FG_ROM_SIZE];
   uint8_t bg_rom[BG_ROM_SIZE];
   uint8_t sprite_rom[SPRITE_ROM_SIZE];
+
+  /* input registers */
+  uint8_t joystick;
+  uint8_t buttons;
+  uint8_t sys;
 
   /* tilemap scroll offset registers */
   uint8_t fg_scroll[3];
@@ -205,6 +220,12 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void *user_data) {
       } else if (BETWEEN(addr, BANK_WINDOW_START, BANK_WINDOW_END)) {
         uint16_t banked_addr = addr - BANK_WINDOW_START + (rygar.main.current_bank * BANK_WINDOW_SIZE);
         Z80_SET_DATA(pins, rygar.main.banked_rom[banked_addr]);
+      } else if (addr == JOYSTICK1) {
+        Z80_SET_DATA(pins, rygar.main.joystick);
+      } else if (addr == BUTTONS1) {
+        Z80_SET_DATA(pins, rygar.main.buttons);
+      } else if (addr == SYS1) {
+        Z80_SET_DATA(pins, rygar.main.sys);
       } else {
         Z80_SET_DATA(pins, 0);
       }
@@ -399,8 +420,6 @@ static void rygar_draw() {
 }
 
 /**
- * rygar_exec
- *
  * Runs the emulation for one frame.
  */
 static void rygar_exec(uint32_t delta) {
@@ -431,6 +450,33 @@ static void app_frame() {
 }
 
 static void app_input(const sapp_event *event) {
+  switch (event->type) {
+    case SAPP_EVENTTYPE_KEY_DOWN:
+      switch (event->key_code) {
+        case SAPP_KEYCODE_LEFT:  rygar.main.joystick |= (1 << 0); break;
+        case SAPP_KEYCODE_RIGHT: rygar.main.joystick |= (1 << 1); break;
+        case SAPP_KEYCODE_DOWN:  rygar.main.joystick |= (1 << 2); break;
+        case SAPP_KEYCODE_UP:    rygar.main.joystick |= (1 << 3); break;
+        case SAPP_KEYCODE_Z:     rygar.main.buttons |= (1 << 0); break; /* attack */
+        case SAPP_KEYCODE_X:     rygar.main.buttons |= (1 << 1); break; /* jump */
+        case SAPP_KEYCODE_1:     rygar.main.sys |= (1 << 2); break; /* player 1 coin */
+        default:                 rygar.main.sys |= (1 << 1); break; /* player 1 start */
+      }
+      break;
+
+    case SAPP_EVENTTYPE_KEY_UP:
+      switch (event->key_code) {
+        case SAPP_KEYCODE_LEFT:  rygar.main.joystick &= ~(1 << 0); break;
+        case SAPP_KEYCODE_RIGHT: rygar.main.joystick &= ~(1 << 1); break;
+        case SAPP_KEYCODE_DOWN:  rygar.main.joystick &= ~(1 << 2); break;
+        case SAPP_KEYCODE_UP:    rygar.main.joystick &= ~(1 << 3); break;
+        case SAPP_KEYCODE_Z:     rygar.main.buttons &= ~(1 << 0); break; /* attack */
+        case SAPP_KEYCODE_X:     rygar.main.buttons &= ~(1 << 1); break; /* jump */
+        case SAPP_KEYCODE_1:     rygar.main.sys &= ~(1 << 2); break; /* player 1 coin */
+        default:                 rygar.main.sys &= ~(1 << 1); break; /* player 1 start */
+      }
+      break;
+  }
 }
 
 static void app_cleanup() {
