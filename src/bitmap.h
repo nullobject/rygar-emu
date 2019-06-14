@@ -1,5 +1,8 @@
 #pragma once
 
+#define BITMAP_DATA(bitmap, x, y) (bitmap->data + y*bitmap->width + x)
+#define BITMAP_PRIORITY(bitmap, x, y) (bitmap->priority + y*bitmap->width + x)
+
 typedef struct {
   // dimensions
   int width;
@@ -25,6 +28,14 @@ void bitmap_shutdown(bitmap_t* bitmap) {
   free(bitmap->priority);
   bitmap->data = 0;
   bitmap->priority = 0;
+}
+
+uint16_t* bitmap_data(bitmap_t* bitmap, int x, int y) {
+  return bitmap->data + y*bitmap->width + x;
+}
+
+uint8_t* bitmap_priority(bitmap_t* bitmap, int x, int y) {
+  return bitmap->priority + y*bitmap->width + x;
 }
 
 void bitmap_fill(bitmap_t* bitmap, uint16_t color) {
