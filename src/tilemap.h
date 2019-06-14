@@ -129,7 +129,7 @@ void tilemap_draw(tilemap_t* tilemap, bitmap_t* bitmap, uint16_t palette_offset,
     for (int x = 0; x < bitmap->width; x++) {
       // Calculate the wrapped x coordinate in tilemap space. Wrapping occurs
       // when the visible area is outside of the tilemap.
-      uint32_t wrapped_x = (x + tilemap->scroll_x) & (tilemap->width - 1);
+      uint32_t wrapped_x = (x + tilemap->scroll_x) % tilemap->width;
       uint32_t addr = y*tilemap->width + wrapped_x;
       uint16_t pixel = tilemap->buffer[addr];
 

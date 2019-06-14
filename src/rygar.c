@@ -63,8 +63,10 @@
 #define FLIP_SCREEN 0xf807
 #define BANK_SWITCH 0xf808
 
-#define DISPLAY_WIDTH 256
-#define DISPLAY_HEIGHT 256
+#define BUFFER_WIDTH 256
+#define BUFFER_HEIGHT 256
+#define SCREEN_WIDTH 256
+#define SCREEN_HEIGHT 224
 
 // The tilemap horizontal scroll values are offset by a fixed value, due to
 // hardware timing constraints, etc. We don't need an adjusted scroll value, so
@@ -257,7 +259,7 @@ static void bg_tile_info(tile_t* tile, int index) {
 static void rygar_decode_tiles() {
   uint8_t tmp[0x20000];
 
-  // decodes a 8x8 tile
+  // decode descriptor for a 8x8 tile
   tile_decode_desc_t tile_decode_8x8 = {
     .tile_width = 8,
     .tile_height = 8,
@@ -268,7 +270,7 @@ static void rygar_decode_tiles() {
     .tile_size = 4*8*8
   };
 
-  // decodes a 16x16 tile, made up of four 8x8 tiles
+  // decode descriptor for a 16x16 tile, made up of four 8x8 tiles
   tile_decode_desc_t tile_decode_16x16 = {
     .tile_width = 16,
     .tile_height = 16,
@@ -340,7 +342,7 @@ static void rygar_init() {
   clk_init(&rygar.main.clk, CPU_FREQ);
   z80_init(&rygar.main.cpu, &(z80_desc_t) { .tick_cb = rygar_tick_main });
   mem_init(&rygar.main.mem);
-  bitmap_init(&rygar.bitmap, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+  bitmap_init(&rygar.bitmap, BUFFER_WIDTH, BUFFER_HEIGHT);
 
   // main memory
   mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
@@ -371,7 +373,7 @@ static void rygar_shutdown() {
 static void rygar_draw() {
   // clear frame buffer
   uint32_t* buffer = gfx_framebuffer();
-  memset(buffer, 0, DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(uint32_t));
+  memset(buffer, 0, BUFFER_WIDTH * BUFFER_HEIGHT * sizeof(uint32_t));
 
   bitmap_t* bitmap = &rygar.bitmap;
   bitmap_fill(bitmap, 0x100);
@@ -385,8 +387,8 @@ static void rygar_draw() {
   sprite_draw(bitmap, &rygar.main.sprite_ram, &rygar.main.sprite_rom);
 
   // copy 16-bit pixels to 32-bit frame buffer
-  uint16_t* data = bitmap->data;
-  for (uint32_t i = 0; i < bitmap->width * bitmap->height; i++) {
+  uint16_t* data = bitmap->data + 16*bitmap->width;
+  for (uint32_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
     *buffer++ = rygar.palette[*data++];
   }
 }
@@ -418,7 +420,7 @@ static void app_init() {
 
 static void app_frame() {
   rygar_exec(clock_frame_time());
-  gfx_draw(DISPLAY_WIDTH, DISPLAY_HEIGHT);
+  gfx_draw(SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
 static void app_input(const sapp_event* event) {
@@ -435,8 +437,8 @@ sapp_desc sokol_main(int argc, char* argv[]) {
     .frame_cb = app_frame,
     .event_cb = app_input,
     .cleanup_cb = app_cleanup,
-    .width = DISPLAY_WIDTH * 4,
-    .height = DISPLAY_HEIGHT * 3,
+    .width = SCREEN_WIDTH * 4,
+    .height = SCREEN_HEIGHT * 3,
     .window_title = "Rygar"
   };
 }

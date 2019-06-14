@@ -1,13 +1,13 @@
 #pragma once
 
 typedef struct {
-  uint32_t width;
-  uint32_t height;
+  int width;
+  int height;
   uint16_t* data;
   uint8_t* priority;
 } bitmap_t;
 
-void bitmap_init(bitmap_t* bitmap, uint32_t width, uint32_t height) {
+void bitmap_init(bitmap_t* bitmap, int width, int height) {
   memset(bitmap, 0, sizeof(bitmap_t));
   bitmap->width = width;
   bitmap->height = height;
@@ -26,7 +26,7 @@ void bitmap_fill(bitmap_t* bitmap, uint16_t color) {
   uint16_t* data = bitmap->data;
   uint8_t* priority = bitmap->priority;
 
-  for (uint32_t i = 0; i < bitmap->width * bitmap->height; i++) {
+  for (int i = 0; i < bitmap->width * bitmap->height; i++) {
     *data++ = color;
     *priority++ = 0;
   }
