@@ -399,11 +399,13 @@ static void rygar_shutdown() {
  * Draws the graphics layers to the frame buffer.
  */
 static void rygar_draw() {
+  bitmap_t *bitmap = &rygar.bitmap;
+
   /* clear frame buffer */
   uint32_t *buffer = gfx_framebuffer();
   memset(buffer, 0, BUFFER_WIDTH * BUFFER_HEIGHT * sizeof(uint32_t));
 
-  bitmap_t *bitmap = &rygar.bitmap;
+  /* fill bitmap with the background color */
   bitmap_fill(bitmap, 0x100);
 
   /* draw layers */
@@ -412,9 +414,11 @@ static void rygar_draw() {
   tilemap_draw(&rygar.tx_tilemap, bitmap, 0x100, TILE_LAYER1);
   sprite_draw(bitmap, &rygar.main.sprite_ram, &rygar.main.sprite_rom, 0, TILE_LAYER0);
 
-  /* copy 16-bit pixels to 32-bit frame buffer */
+  /* skip the first 16 lines */
   uint16_t *data = bitmap->data + (16 * bitmap->width);
-  for (uint32_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+
+  /* copy bitmap to 32-bit frame buffer */
+  for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
     *buffer++ = rygar.palette[*data++];
   }
 }
