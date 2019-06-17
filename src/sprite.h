@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "bitmap.h"
 #include "tile.h"
 

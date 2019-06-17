@@ -305,7 +305,7 @@ static void rygar_decode_tiles() {
   /* tx rom */
   memcpy(&tmp[0x00000], dump_cpu_8k, 0x8000);
 
-  tile_decode(&tile_decode_8x8, &tmp, &rygar.main.tx_rom, 1024);
+  tile_decode(&tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.tx_rom, 1024);
 
   tilemap_init(&rygar.tx_tilemap, &(tilemap_desc_t) {
     .tile_cb = tx_tile_info,
@@ -322,7 +322,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x10000], dump_vid_6n, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6l, 0x8000);
 
-  tile_decode(&tile_decode_16x16, &tmp, &rygar.main.fg_rom, 1024);
+  tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.fg_rom, 1024);
 
   tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t) {
     .tile_cb = fg_tile_info,
@@ -339,7 +339,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x10000], dump_vid_6c, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6b, 0x8000);
 
-  tile_decode(&tile_decode_16x16, &tmp, &rygar.main.bg_rom, 1024);
+  tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.bg_rom, 1024);
 
   tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t) {
     .tile_cb = bg_tile_info,
@@ -356,7 +356,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x10000], dump_vid_6h, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6g, 0x8000);
 
-  tile_decode(&tile_decode_8x8, &tmp, &rygar.main.sprite_rom, 4096);
+  tile_decode(&tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.sprite_rom, 4096);
 }
 
 /**
@@ -412,7 +412,7 @@ static void rygar_draw() {
   tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, TILE_LAYER3);
   tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, TILE_LAYER2);
   tilemap_draw(&rygar.tx_tilemap, bitmap, 0x100, TILE_LAYER1);
-  sprite_draw(bitmap, &rygar.main.sprite_ram, &rygar.main.sprite_rom, 0, TILE_LAYER0);
+  sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram, (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
 
   /* skip the first 16 lines */
   uint16_t *data = bitmap->data + (16 * bitmap->width);
@@ -479,6 +479,9 @@ static void app_input(const sapp_event *event) {
         case SAPP_KEYCODE_1:     rygar.main.sys &= ~(1 << 2); break; /* player 1 coin */
         default:                 rygar.main.sys &= ~(1 << 1); break; /* player 1 start */
       }
+      break;
+
+    default:
       break;
   }
 }

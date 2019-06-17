@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdint.h>
+#include <string.h>
+
 /* step macros */
 #define STEP2(start, step) (start), (start)+(step)
 #define STEP4(start, step) STEP2(start, step), STEP2((start)+2*(step), step)

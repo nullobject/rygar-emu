@@ -1,7 +1,14 @@
 #pragma once
 
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "bitmap.h"
 #include "tile.h"
+
+#define MAX_TILE_ROWS 32
+#define MAX_TILE_COLS 32
 
 /* tile flags */
 #define TILEMAP_TILE_DIRTY 0x01
@@ -44,7 +51,7 @@ typedef struct {
   bitmap_t bitmap;
 
   /* tile data */
-  tile_t *tiles;
+  tile_t tiles[MAX_TILE_COLS * MAX_TILE_ROWS];
 
   /* tile info callback */
   void (*tile_cb)(tile_t *tile, int index);
@@ -66,8 +73,6 @@ void tilemap_init(tilemap_t *tilemap, const tilemap_desc_t *desc) {
   tilemap->rows = desc->rows;
   tilemap->tile_cb = desc->tile_cb;
 
-  tilemap->tiles = malloc(tilemap->cols * tilemap->rows * sizeof(tile_t));
-
   bitmap_init(&tilemap->bitmap, width, height);
 }
 
@@ -75,8 +80,6 @@ void tilemap_init(tilemap_t *tilemap, const tilemap_desc_t *desc) {
  * Tears down the tilemap.
  */
 void tilemap_shutdown(tilemap_t *tilemap) {
-  free(tilemap->tiles);
-  tilemap->tiles = 0;
   bitmap_shutdown(&tilemap->bitmap);
 }
 
