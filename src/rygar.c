@@ -441,8 +441,7 @@ static void rygar_exec(uint32_t delta) {
 static void app_init() {
   gfx_init(&(gfx_desc_t) {
     .aspect_x = 4,
-    .aspect_y = 3,
-    .rot90 = false
+    .aspect_y = 3
   });
   clock_init();
   rygar_init();
