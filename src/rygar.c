@@ -61,6 +61,10 @@
 #define BUTTONS2 0xf803
 #define SYS1 0xf804
 #define SYS2 0xf805
+#define DIP_SW1_L 0xf806
+#define DIP_SW1_H 0xf807
+#define DIP_SW2_L 0xf808
+#define DIP_SW2_H 0xf809
 #define SYS3 0xf80f
 
 /* outputs */
@@ -226,6 +230,8 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void *user_data) {
         Z80_SET_DATA(pins, rygar.main.buttons);
       } else if (addr == SYS1) {
         Z80_SET_DATA(pins, rygar.main.sys);
+      } else if (addr == DIP_SW2_H) {
+        Z80_SET_DATA(pins, 0x8);
       } else {
         Z80_SET_DATA(pins, 0);
       }
