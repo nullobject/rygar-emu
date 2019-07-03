@@ -38,7 +38,7 @@ typedef struct {
   int x_offsets[32];
   int y_offsets[32];
 
-  /* tile size (in bits) */
+  /* tile size (in bytes) */
   int tile_size;
 } tile_decode_desc_t;
 
@@ -68,7 +68,7 @@ void tile_decode(const tile_decode_desc_t *desc, uint8_t *rom, uint8_t *dst, int
 
     for (int plane = 0; plane < desc->planes; plane++) {
       int plane_bit = 1 << (desc->planes - 1 - plane);
-			int plane_offset = (tile * desc->tile_size) + desc->plane_offsets[plane];
+			int plane_offset = (tile * desc->tile_size * 8) + desc->plane_offsets[plane];
 
 			for (int y = 0; y < desc->tile_height; y++) {
 				int y_offset = plane_offset + desc->y_offsets[y];

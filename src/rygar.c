@@ -294,7 +294,7 @@ static void rygar_decode_tiles() {
     .plane_offsets = { STEP4(0, 1) },
     .x_offsets = { STEP8(0, 4) },
     .y_offsets = { STEP8(0, 4 * 8) },
-    .tile_size = 4 * 8 * 8
+    .tile_size = 4 * 8 /* 32 kB */
   };
 
   /* decode descriptor for a 16x16 tile, made up of four 8x8 tiles */
@@ -305,12 +305,13 @@ static void rygar_decode_tiles() {
     .plane_offsets = { STEP4(0, 1) },
     .x_offsets = { STEP8(0, 4), STEP8(4 * 8 * 8, 4) },
     .y_offsets = { STEP8(0, 4 * 8), STEP8(4 * 8 * 8 * 2, 4 * 8) },
-    .tile_size = 4 * 4 * 8 * 8
+    .tile_size = 4 * 4 * 8 /* 128 kB */
   };
 
-  /* tx rom */
+  /* char rom */
   memcpy(&tmp[0x00000], dump_cpu_8k, 0x8000);
 
+  /* decode char rom */
   tile_decode(&tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.char_rom, 1024);
 
   tilemap_init(&rygar.char_tilemap, &(tilemap_desc_t) {
@@ -328,6 +329,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x10000], dump_vid_6n, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6l, 0x8000);
 
+  /* decode fg rom */
   tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.fg_rom, 1024);
 
   tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t) {
@@ -345,6 +347,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x10000], dump_vid_6c, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6b, 0x8000);
 
+  /* decode bg rom */
   tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.bg_rom, 1024);
 
   tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t) {
@@ -362,6 +365,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x10000], dump_vid_6h, 0x8000);
   memcpy(&tmp[0x18000], dump_vid_6g, 0x8000);
 
+  /* decode sprite rom */
   tile_decode(&tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.sprite_rom, 4096);
 }
 
