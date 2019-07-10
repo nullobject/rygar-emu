@@ -4,7 +4,9 @@ This is an emulator for one of my favourite arcade games from the 1980s, Rygar.
 
 <img alt="Rygar" src="https://raw.githubusercontent.com/nullobject/rygar/master/rygar.png" />
 
-## Controls
+## How to Play
+
+You can [run it in your browser](https://rygar.joshbassett.info).
 
 - UP/DOWN/LEFT/RIGHT: move
 - Z: attack
