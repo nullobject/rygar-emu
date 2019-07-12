@@ -262,9 +262,9 @@ static void fg_tile_info(tile_t *tile, int index) {
   uint8_t lo = rygar.main.fg_ram[index];
   uint8_t hi = rygar.main.fg_ram[index + 0x200];
 
-  /* the tile code is a 11-bit value, represented by the low byte and the three
+  /* the tile code is a 10-bit value, represented by the low byte and the three
    * LSBs of the high byte */
-  tile->code = (hi & 0x07) << 8 | lo;
+  tile->code = (hi & 0x03) << 8 | lo;
 
   /* the four MSBs of the high byte represent the color value */
   tile->color = hi >> 4;
@@ -274,9 +274,9 @@ static void bg_tile_info(tile_t *tile, int index) {
   uint8_t lo = rygar.main.bg_ram[index];
   uint8_t hi = rygar.main.bg_ram[index + 0x200];
 
-  /* the tile code is a 11-bit value, represented by the low byte and the three
+  /* the tile code is a 10-bit value, represented by the low byte and the three
    * LSBs of the high byte */
-  tile->code = (hi & 0x07) << 8 | lo;
+  tile->code = (hi & 0x03) << 8 | lo;
 
   /* the four MSBs of the high byte represent the color value */
   tile->color = hi >> 4;
