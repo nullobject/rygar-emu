@@ -474,8 +474,8 @@ static void app_input(const sapp_event *event) {
         case SAPP_KEYCODE_UP:    rygar.main.joystick |= (1 << 3); break;
         case SAPP_KEYCODE_Z:     rygar.main.buttons |= (1 << 0); break; /* attack */
         case SAPP_KEYCODE_X:     rygar.main.buttons |= (1 << 1); break; /* jump */
-        case SAPP_KEYCODE_1:     rygar.main.sys |= (1 << 2); break; /* player 1 coin */
-        default:                 rygar.main.sys |= (1 << 1); break; /* player 1 start */
+        case SAPP_KEYCODE_5:     rygar.main.sys |= (1 << 2); break; /* player 1 coin */
+        case SAPP_KEYCODE_1:     rygar.main.sys |= (1 << 1); break; /* player 1 start */
       }
       break;
 
@@ -487,8 +487,8 @@ static void app_input(const sapp_event *event) {
         case SAPP_KEYCODE_UP:    rygar.main.joystick &= ~(1 << 3); break;
         case SAPP_KEYCODE_Z:     rygar.main.buttons &= ~(1 << 0); break; /* attack */
         case SAPP_KEYCODE_X:     rygar.main.buttons &= ~(1 << 1); break; /* jump */
-        case SAPP_KEYCODE_1:     rygar.main.sys &= ~(1 << 2); break; /* player 1 coin */
-        default:                 rygar.main.sys &= ~(1 << 1); break; /* player 1 start */
+        case SAPP_KEYCODE_5:     rygar.main.sys &= ~(1 << 2); break; /* player 1 coin */
+        case SAPP_KEYCODE_1:     rygar.main.sys &= ~(1 << 1); break; /* player 1 start */
       }
       break;
 

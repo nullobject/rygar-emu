@@ -11,7 +11,8 @@ You can [run it in your browser](https://rygar.joshbassett.info).
 - UP/DOWN/LEFT/RIGHT: move
 - Z: attack
 - X: jump
-- 1: insert coin
+- 5: insert coin
+- 1: start
 
 ## How to Build
 
