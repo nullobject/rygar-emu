@@ -39,31 +39,32 @@ static const uint8_t sprite_tile_offset_table[TILE_HEIGHT][TILE_WIDTH] = {
  *
  *  byte     bit        description
  * --------+-76543210-+----------------
- *       0 | xxxx---- | bank
- *         | -----x-- | visible
- *         | ------x- | flip y
- *         | -------x | flip x
- *       1 | xxxxxxxx | tile code
+ *       0 | xxxx---- | hi code
+ *         | -----x-- | enable
+ *         | ------x- | flip Y
+ *         | -------x | flip X
+ *       1 | xxxxxxxx | lo code
  *       2 | ------xx | size
  *       3 | xx-------| priority
- *         | --x----- | upper y co-ord
- *         | ---x---- | upper x co-ord
+ *         | --x----- | hi pos Y
+ *         | ---x---- | hi pos X
  *         | ----xxxx | colour
- *       4 | xxxxxxxx | ypos
- *       5 | xxxxxxxx | xpos
+ *       4 | xxxxxxxx | lo pos Y
+ *       5 | xxxxxxxx | lo pos X
  *       6 | -------- |
  *       7 | -------- |
  */
 void sprite_draw(bitmap_t *bitmap, uint8_t *ram, uint8_t *rom, uint16_t palette_offset, uint8_t flags) {
-  /* sprites are sorted from highest to lowest priority, so we need to iterate
+  /* Sprites are sorted from highest to lowest priority, so we need to iterate
    * backwards to ensure that the sprites with the highest priority are drawn
    * last */
   for (int addr = SPRITE_RAM_SIZE - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
     bool visible = ram[addr] & 0x04;
+    bool enable = ram[addr] & 0x04;
 
-		if (visible) {
+		if (enable) {
       uint8_t bank = ram[addr];
-      uint16_t code = ram[addr + 1] | (bank & 0xf0)<<4;
+      uint16_t code = (bank & 0xf0)<<4 | ram[addr + 1];
       int size = ram[addr + 2] & 0x03;
 
       /* Ensure the lower sprite code bits are masked. This is required because

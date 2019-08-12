@@ -84,9 +84,9 @@
 #define SCREEN_WIDTH 256
 #define SCREEN_HEIGHT 224
 
-/* The tilemap horizontal scroll values are all offset by a fixed value,
- * probably because of hardware timing constraints, etc. We don't want to
- * include this offset in our scroll values, so we must correct it. */
+/* The tilemap horizontal scroll values are all offset by a fixed value, to
+ * compensate for the back porch region of the CRT horizontal timing. We don't
+ * need to include this offset in our scroll values, so we must correct it. */
 #define SCROLL_OFFSET 48
 
 #define CPU_FREQ 4000000
