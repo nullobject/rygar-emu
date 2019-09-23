@@ -213,10 +213,12 @@ static uint64_t rygar_tick_main(int num_ticks, uint64_t pins, void *user_data) {
         uint8_t offset = addr - FG_SCROLL_START;
         rygar.main.fg_scroll[offset] = data;
         tilemap_set_scroll_x(&rygar.fg_tilemap, (rygar.main.fg_scroll[1] << 8 | rygar.main.fg_scroll[0]) + SCROLL_OFFSET);
+        tilemap_set_scroll_y(&rygar.fg_tilemap, (rygar.main.fg_scroll[2]));
       } else if (BETWEEN(addr, BG_SCROLL_START, BG_SCROLL_END)) {
         uint8_t offset = addr - BG_SCROLL_START;
         rygar.main.bg_scroll[offset] = data;
         tilemap_set_scroll_x(&rygar.bg_tilemap, (rygar.main.bg_scroll[1] << 8 | rygar.main.bg_scroll[0]) + SCROLL_OFFSET);
+        tilemap_set_scroll_y(&rygar.bg_tilemap, (rygar.main.bg_scroll[2]));
       } else if (addr == BANK_SWITCH) {
         rygar.main.current_bank = data >> 3; /* bank addressed by DO3-DO6 in schematic */
       }

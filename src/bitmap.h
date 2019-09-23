@@ -52,16 +52,17 @@ void bitmap_fill(bitmap_t *bitmap, uint16_t color) {
 /**
  * Copies a bitmap, respecting the priority of the pixels.
  */
-void bitmap_copy(bitmap_t *src, bitmap_t *dst, int scroll_x) {
+void bitmap_copy(bitmap_t *src, bitmap_t *dst, int scroll_x, int scroll_y) {
   uint16_t *data = dst->data;
   uint8_t *priority = dst->priority;
 
   for (int y = 0; y < dst->height; y++) {
     for (int x = 0; x < dst->width; x++) {
-      /* Calculate the wrapped x coordinate in tilemap space. Wrapping occurs
+      /* Calculate the wrapped coordinates in tilemap space. Wrapping occurs
        * when the visible area is outside of the tilemap. */
       uint32_t wrapped_x = (x + scroll_x) % src->width;
-      uint32_t addr = (y * src->width) + wrapped_x;
+      uint32_t wrapped_y = (y + scroll_y) % src->height;
+      uint32_t addr = (wrapped_y * src->width) + wrapped_x;
 
       if (src->priority[addr]) {
         *data = src->data[addr];

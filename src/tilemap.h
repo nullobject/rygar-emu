@@ -46,6 +46,7 @@ typedef struct {
 
   /* scroll offset */
   int scroll_x;
+  int scroll_y;
 
   /* pixel data */
   bitmap_t bitmap;
@@ -98,6 +99,13 @@ void tilemap_set_scroll_x(tilemap_t *tilemap, const uint16_t value) {
 }
 
 /**
+ * Sets the vertical scroll offset.
+ */
+void tilemap_set_scroll_y(tilemap_t *tilemap, const uint16_t value) {
+  tilemap->scroll_y = value;
+}
+
+/**
  * Draws the tilemap to the given bitmap.
  */
 void tilemap_draw(tilemap_t *tilemap, bitmap_t *bitmap, uint16_t palette_offset, uint8_t flags) {
@@ -135,5 +143,5 @@ void tilemap_draw(tilemap_t *tilemap, bitmap_t *bitmap, uint16_t palette_offset,
   }
 
   /* copy the internal buffer to the output bitmap */
-  bitmap_copy(&tilemap->bitmap, bitmap, tilemap->scroll_x);
+  bitmap_copy(&tilemap->bitmap, bitmap, tilemap->scroll_x, tilemap->scroll_y);
 }
