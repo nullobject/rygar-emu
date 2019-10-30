@@ -478,6 +478,7 @@ static void app_input(const sapp_event *event) {
         case SAPP_KEYCODE_X:     rygar.main.buttons |= (1 << 1); break; /* jump */
         case SAPP_KEYCODE_5:     rygar.main.sys |= (1 << 2); break; /* player 1 coin */
         case SAPP_KEYCODE_1:     rygar.main.sys |= (1 << 1); break; /* player 1 start */
+        default: break;
       }
       break;
 
@@ -491,6 +492,7 @@ static void app_input(const sapp_event *event) {
         case SAPP_KEYCODE_X:     rygar.main.buttons &= ~(1 << 1); break; /* jump */
         case SAPP_KEYCODE_5:     rygar.main.sys &= ~(1 << 2); break; /* player 1 coin */
         case SAPP_KEYCODE_1:     rygar.main.sys &= ~(1 << 1); break; /* player 1 start */
+        default: break;
       }
       break;
 

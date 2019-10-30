@@ -59,7 +59,6 @@ void sprite_draw(bitmap_t *bitmap, uint8_t *ram, uint8_t *rom, uint16_t palette_
    * backwards to ensure that the sprites with the highest priority are drawn
    * last */
   for (int addr = SPRITE_RAM_SIZE - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
-    bool visible = ram[addr] & 0x04;
     bool enable = ram[addr] & 0x04;
 
 		if (enable) {
