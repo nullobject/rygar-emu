@@ -298,7 +298,7 @@ static void rygar_decode_tiles() {
     .plane_offsets = { STEP4(0, 1) },
     .x_offsets = { STEP8(0, 4) },
     .y_offsets = { STEP8(0, 4 * 8) },
-    .tile_size = 4 * 8 /* 32 kB */
+    .tile_size = 4 * 8 /* 32 bytes */
   };
 
   /* decode descriptor for a 16x16 tile, made up of four 8x8 tiles */
@@ -309,7 +309,7 @@ static void rygar_decode_tiles() {
     .plane_offsets = { STEP4(0, 1) },
     .x_offsets = { STEP8(0, 4), STEP8(4 * 8 * 8, 4) },
     .y_offsets = { STEP8(0, 4 * 8), STEP8(4 * 8 * 8 * 2, 4 * 8) },
-    .tile_size = 4 * 4 * 8 /* 128 kB */
+    .tile_size = 4 * 4 * 8 /* 128 bytes */
   };
 
   /* char rom */
