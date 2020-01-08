@@ -377,7 +377,7 @@ static void rygar_decode_tiles() {
  * Initialises the Rygar arcade hardware.
  */
 static void rygar_init() {
-  memset(&rygar, 0, sizeof(rygar));
+  memset(&rygar, 0, sizeof(rygar_t));
 
   rygar.vsync_count = VSYNC_PERIOD_4MHZ;
 
