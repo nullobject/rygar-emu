@@ -20,8 +20,8 @@ void bitmap_init(bitmap_t *bitmap, int width, int height) {
   memset(bitmap, 0, sizeof(bitmap_t));
   bitmap->width = width;
   bitmap->height = height;
-  bitmap->data = malloc(width * height * sizeof(uint16_t));
-  bitmap->priority = malloc(width * height * sizeof(uint8_t));
+  bitmap->data = calloc(width * height, sizeof(uint16_t));
+  bitmap->priority = calloc(width * height, sizeof(uint8_t));
 }
 
 void bitmap_shutdown(bitmap_t *bitmap) {
