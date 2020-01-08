@@ -16,6 +16,9 @@
 #include "tile.h"
 #include "tilemap.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #define BETWEEN(n, a, b) ((n >= a) && (n <= b))
 
 #define CHAR_ROM_SIZE 0x10000
@@ -142,6 +145,8 @@ typedef struct {
   /* counters */
   int vsync_count;
   int vblank_count;
+
+  bool capture;
 } rygar_t;
 
 rygar_t rygar;
@@ -410,14 +415,54 @@ static void rygar_shutdown() {
 }
 
 /**
+ * Applies the palette to the source bitmap data.
+ */
+static void apply_palette(uint16_t *src, uint32_t *dest, int width, int height) {
+  for (int i = 0; i < width*height; i++) {
+    dest[i] = rygar.palette[src[i]];
+  }
+}
+
+static void capture_tilemap(char const *filename, tilemap_t *tilemap, uint16_t palette_offset) {
+  uint32_t buffer[SCREEN_WIDTH*SCREEN_HEIGHT];
+  bitmap_t *bitmap = &rygar.bitmap;
+
+  /* clear bitmap */
+  bitmap_fill(bitmap, 0);
+
+  /* draw layer */
+  tilemap_draw(tilemap, bitmap, palette_offset, 0);
+
+  uint16_t *data = bitmap_data(bitmap, 0, 16);
+  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+  /* write buffer */
+  stbi_write_png(filename, SCREEN_WIDTH, SCREEN_HEIGHT, 4, buffer, SCREEN_WIDTH*4);
+}
+
+static void capture_sprites(char const *filename, uint8_t *ram, uint8_t *rom, uint16_t palette_offset) {
+  uint32_t buffer[SCREEN_WIDTH*SCREEN_HEIGHT];
+  bitmap_t *bitmap = &rygar.bitmap;
+
+  /* clear bitmap */
+  bitmap_fill(bitmap, 0);
+
+  /* draw layer */
+  sprite_draw(bitmap, ram, rom, palette_offset, TILE_LAYER0);
+
+  uint16_t *data = bitmap_data(bitmap, 0, 16);
+  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+  /* write buffer */
+  stbi_write_png(filename, SCREEN_WIDTH, SCREEN_HEIGHT, 4, buffer, SCREEN_WIDTH*4);
+}
+
+/**
  * Draws the graphics layers to the frame buffer.
  */
 static void rygar_draw() {
-  bitmap_t *bitmap = &rygar.bitmap;
-
-  /* clear frame buffer */
   uint32_t *buffer = gfx_framebuffer();
-  memset(buffer, 0, BUFFER_WIDTH * BUFFER_HEIGHT * sizeof(uint32_t));
+  bitmap_t *bitmap = &rygar.bitmap;
 
   /* fill bitmap with the background color */
   bitmap_fill(bitmap, 0x100);
@@ -429,11 +474,18 @@ static void rygar_draw() {
   sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram, (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
 
   /* skip the first 16 lines */
-  uint16_t *data = bitmap->data + (16 * bitmap->width);
+  uint16_t *data = bitmap_data(bitmap, 0, 16);
 
   /* copy bitmap to 32-bit frame buffer */
-  for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-    *buffer++ = rygar.palette[*data++];
+  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+  if (rygar.capture) {
+    printf("capturing...\n");
+    capture_tilemap("background.png", &rygar.bg_tilemap, 0x300);
+    capture_tilemap("foreground.png", &rygar.fg_tilemap, 0x200);
+    capture_tilemap("char.png", &rygar.char_tilemap, 0x100);
+    capture_sprites("sprite.png", (uint8_t *)&rygar.main.sprite_ram, (uint8_t *)&rygar.main.sprite_rom, 0);
+    rygar.capture = false;
   }
 }
 
@@ -478,6 +530,7 @@ static void app_input(const sapp_event *event) {
         case SAPP_KEYCODE_X:     rygar.main.buttons |= (1 << 1); break; /* jump */
         case SAPP_KEYCODE_5:     rygar.main.sys |= (1 << 2); break; /* player 1 coin */
         case SAPP_KEYCODE_1:     rygar.main.sys |= (1 << 1); break; /* player 1 start */
+        case SAPP_KEYCODE_P:     rygar.capture = true; break; /* capture */
         default: break;
       }
       break;
