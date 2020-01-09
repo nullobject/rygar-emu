@@ -423,37 +423,16 @@ static void apply_palette(uint16_t *src, uint32_t *dest, int width, int height) 
   }
 }
 
-static void capture_tilemap(char const *filename, tilemap_t *tilemap, uint16_t palette_offset) {
+static void capture_bitmap(bitmap_t* bitmap, char const *filename) {
   uint32_t buffer[SCREEN_WIDTH*SCREEN_HEIGHT];
-  bitmap_t *bitmap = &rygar.bitmap;
 
-  /* clear bitmap */
-  bitmap_fill(bitmap, 0);
-
-  /* draw layer */
-  tilemap_draw(tilemap, bitmap, palette_offset, 0);
-
+  /* skip the first 16 lines */
   uint16_t *data = bitmap_data(bitmap, 0, 16);
+
+  /* copy the bitmap data to the output buffer */
   apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-  /* write buffer */
-  stbi_write_png(filename, SCREEN_WIDTH, SCREEN_HEIGHT, 4, buffer, SCREEN_WIDTH*4);
-}
-
-static void capture_sprites(char const *filename, uint8_t *ram, uint8_t *rom, uint16_t palette_offset) {
-  uint32_t buffer[SCREEN_WIDTH*SCREEN_HEIGHT];
-  bitmap_t *bitmap = &rygar.bitmap;
-
-  /* clear bitmap */
-  bitmap_fill(bitmap, 0);
-
-  /* draw layer */
-  sprite_draw(bitmap, ram, rom, palette_offset, TILE_LAYER0);
-
-  uint16_t *data = bitmap_data(bitmap, 0, 16);
-  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-  /* write buffer */
+  /* write the snapshot */
   stbi_write_png(filename, SCREEN_WIDTH, SCREEN_HEIGHT, 4, buffer, SCREEN_WIDTH*4);
 }
 
@@ -481,10 +460,23 @@ static void rygar_draw() {
 
   if (rygar.capture) {
     printf("capturing...\n");
-    capture_tilemap("background.png", &rygar.bg_tilemap, 0x300);
-    capture_tilemap("foreground.png", &rygar.fg_tilemap, 0x200);
-    capture_tilemap("char.png", &rygar.char_tilemap, 0x100);
-    capture_sprites("sprite.png", (uint8_t *)&rygar.main.sprite_ram, (uint8_t *)&rygar.main.sprite_rom, 0);
+
+    bitmap_fill(bitmap, 0);
+    sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram, (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
+    capture_bitmap(bitmap, "sprite.png");
+
+    bitmap_fill(bitmap, 0);
+    tilemap_draw(&rygar.char_tilemap, bitmap, 0x100, TILE_LAYER1);
+    capture_bitmap(bitmap, "char.png");
+
+    bitmap_fill(bitmap, 0);
+    tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, TILE_LAYER2);
+    capture_bitmap(bitmap, "foreground.png");
+
+    bitmap_fill(bitmap, 0);
+    tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, TILE_LAYER3);
+    capture_bitmap(bitmap, "background.png");
+
     rygar.capture = false;
   }
 }
