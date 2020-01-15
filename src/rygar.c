@@ -441,43 +441,12 @@ static void capture_bitmap(bitmap_t* bitmap, char const *filename) {
  */
 static void rygar_draw() {
   uint32_t *buffer = gfx_framebuffer();
-  bitmap_t *bitmap = &rygar.bitmap;
 
-  /* fill bitmap with the background color */
-  bitmap_fill(bitmap, 0x100);
-
-  /* draw layers */
-  tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, TILE_LAYER3);
-  tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, TILE_LAYER2);
-  tilemap_draw(&rygar.char_tilemap, bitmap, 0x100, TILE_LAYER1);
-  sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram, (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
-
-  /* skip the first 16 lines */
-  uint16_t *data = bitmap_data(bitmap, 0, 16);
-
-  /* copy bitmap to 32-bit frame buffer */
-  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-  if (rygar.capture) {
-    printf("capturing...\n");
-
-    bitmap_fill(bitmap, 0);
-    sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram, (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
-    capture_bitmap(bitmap, "sprite.png");
-
-    bitmap_fill(bitmap, 0);
-    tilemap_draw(&rygar.char_tilemap, bitmap, 0x100, TILE_LAYER1);
-    capture_bitmap(bitmap, "char.png");
-
-    bitmap_fill(bitmap, 0);
-    tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, TILE_LAYER2);
-    capture_bitmap(bitmap, "foreground.png");
-
-    bitmap_fill(bitmap, 0);
-    tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, TILE_LAYER3);
-    capture_bitmap(bitmap, "background.png");
-
-    rygar.capture = false;
+  for (int i = 0; i < 256; i++) {
+    for (int j = 0; j < 256; j++) {
+      uint8_t v = rygar.main.work_ram[(i/4)*256+(j/4)];
+      buffer[i*256+j] = 0xff000000 | (v<<16) | (v<<8) | v;
+    }
   }
 }
 
