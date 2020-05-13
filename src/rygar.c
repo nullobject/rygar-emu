@@ -56,10 +56,12 @@
 
 #define BETWEEN(n, a, b) ((n >= a) && (n <= b))
 
+// These ROMs are twice the size of what is used in the original arcade
+// hardware, because we decode the tiles.
 #define CHAR_ROM_SIZE 0x10000
-#define FG_ROM_SIZE 0x40000
-#define BG_ROM_SIZE 0x40000
-#define SPRITE_ROM_SIZE 0x40000
+#define FG_ROM_SIZE 0x80000
+#define BG_ROM_SIZE 0x80000
+#define SPRITE_ROM_SIZE 0x80000
 
 #define WORK_RAM_SIZE 0x1000
 #define WORK_RAM_START 0xc000
@@ -328,7 +330,7 @@ static void bg_tile_info(tile_t *tile, int index) {
  * Decodes the tile ROMs.
  */
 static void rygar_decode_tiles() {
-  uint8_t tmp[0x20000];
+  uint8_t tmp[0x40000];
 
   /* decode descriptor for a 8x8 tile */
   tile_decode_desc_t tile_decode_8x8 = {
@@ -353,7 +355,7 @@ static void rygar_decode_tiles() {
   };
 
   /* char rom */
-  memcpy(&tmp[0x00000], dump_cpu_8k, 0x8000);
+  memcpy(&tmp[0x00000], dump_silkworm_2, 0x8000);
 
   /* decode char rom */
   tile_decode(&tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.char_rom, 1024);
@@ -368,10 +370,10 @@ static void rygar_decode_tiles() {
   });
 
   /* fg rom */
-  memcpy(&tmp[0x00000], dump_vid_6p, 0x8000);
-  memcpy(&tmp[0x08000], dump_vid_6o, 0x8000);
-  memcpy(&tmp[0x10000], dump_vid_6n, 0x8000);
-  memcpy(&tmp[0x18000], dump_vid_6l, 0x8000);
+  memcpy(&tmp[0x00000], dump_silkworm_10, 0x10000);
+  memcpy(&tmp[0x10000], dump_silkworm_11, 0x10000);
+  memcpy(&tmp[0x20000], dump_silkworm_12, 0x10000);
+  memcpy(&tmp[0x30000], dump_silkworm_13, 0x10000);
 
   /* decode fg rom */
   tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.fg_rom, 1024);
@@ -386,10 +388,10 @@ static void rygar_decode_tiles() {
   });
 
   /* bg rom */
-  memcpy(&tmp[0x00000], dump_vid_6f, 0x8000);
-  memcpy(&tmp[0x08000], dump_vid_6e, 0x8000);
-  memcpy(&tmp[0x10000], dump_vid_6c, 0x8000);
-  memcpy(&tmp[0x18000], dump_vid_6b, 0x8000);
+  memcpy(&tmp[0x00000], dump_silkworm_14, 0x10000);
+  memcpy(&tmp[0x10000], dump_silkworm_15, 0x10000);
+  memcpy(&tmp[0x20000], dump_silkworm_16, 0x10000);
+  memcpy(&tmp[0x30000], dump_silkworm_17, 0x10000);
 
   /* decode bg rom */
   tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.bg_rom, 1024);
@@ -404,10 +406,10 @@ static void rygar_decode_tiles() {
   });
 
   /* sprite rom */
-  memcpy(&tmp[0x00000], dump_vid_6k, 0x8000);
-  memcpy(&tmp[0x08000], dump_vid_6j, 0x8000);
-  memcpy(&tmp[0x10000], dump_vid_6h, 0x8000);
-  memcpy(&tmp[0x18000], dump_vid_6g, 0x8000);
+  memcpy(&tmp[0x00000], dump_silkworm_6, 0x10000);
+  memcpy(&tmp[0x10000], dump_silkworm_7, 0x10000);
+  memcpy(&tmp[0x20000], dump_silkworm_8, 0x10000);
+  memcpy(&tmp[0x30000], dump_silkworm_9, 0x10000);
 
   /* decode sprite rom */
   tile_decode(&tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.sprite_rom, 4096);
@@ -427,8 +429,7 @@ static void rygar_init() {
   bitmap_init(&rygar.bitmap, BUFFER_WIDTH, BUFFER_HEIGHT);
 
   /* main memory */
-  mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
-  mem_map_rom(&rygar.main.mem, 0, 0x8000, 0x4000, dump_cpu_5m);
+  mem_map_rom(&rygar.main.mem, 0, 0x00000, 0x10000, dump_silkworm_4);
   mem_map_ram(&rygar.main.mem, 0, WORK_RAM_START, WORK_RAM_SIZE, rygar.main.work_ram);
   mem_map_ram(&rygar.main.mem, 0, CHAR_RAM_START, CHAR_RAM_SIZE, rygar.main.char_ram);
   mem_map_ram(&rygar.main.mem, 0, FG_RAM_START, FG_RAM_SIZE, rygar.main.fg_ram);
@@ -437,7 +438,7 @@ static void rygar_init() {
   mem_map_ram(&rygar.main.mem, 0, PALETTE_RAM_START, PALETTE_RAM_SIZE, rygar.main.palette_ram);
 
   /* banked rom */
-  memcpy(&rygar.main.banked_rom[0x00000], dump_cpu_5j, 0x8000);
+  memcpy(&rygar.main.banked_rom[0x00000], dump_silkworm_5, 0x10000);
 
   rygar_decode_tiles();
 }
