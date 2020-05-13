@@ -77,7 +77,7 @@
 #define FG_SCROLL_END 0xf802
 #define BG_SCROLL_START 0xf803
 #define BG_SCROLL_END 0xf805
-#define SOUND_LATCH 0xf807
+#define SOUND_LATCH 0xf806
 #define FLIP_SCREEN 0xf807
 #define BANK_SWITCH 0xf808
 
