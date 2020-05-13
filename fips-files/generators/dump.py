@@ -6,6 +6,7 @@
 Version = 3
 
 import sys
+import re
 import os.path
 import yaml
 import genutil
@@ -13,14 +14,14 @@ import genutil
 #-------------------------------------------------------------------------------
 def get_file_path(filename, file_path) :
     '''
-    Returns absolute path to an input file, given file name and 
+    Returns absolute path to an input file, given file name and
     another full file path in the same directory.
     '''
     return '{}/{}'.format(os.path.dirname(file_path), filename)
 
 #-------------------------------------------------------------------------------
 def get_file_cname(filename) :
-    return 'dump_{}'.format(os.path.splitext(filename)[0])
+    return 'dump_{}'.format(re.sub('\.', '_', filename))
 
 #-------------------------------------------------------------------------------
 def gen_header(out_hdr, files) :
@@ -37,7 +38,7 @@ def gen_header(out_hdr, files) :
                     file_name = get_file_cname(file)
                     file_size = os.path.getsize(file_path)
                     items[file_name] = file_size
-                    f.write('unsigned char {}[{}] = {{\n'.format(file_name, file_size))               
+                    f.write('unsigned char {}[{}] = {{\n'.format(file_name, file_size))
                     num = 0
                     for byte in file_data :
                         if sys.version_info[0] >= 3:
