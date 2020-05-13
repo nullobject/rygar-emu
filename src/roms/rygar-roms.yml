@@ -1,18 +1,19 @@
 ---
 files:
-  - 5.5p
-  - cpu_5j.bin
-  - cpu_5m.bin
-  - cpu_8k.bin
-  - vid_6b.bin
-  - vid_6c.bin
-  - vid_6e.bin
-  - vid_6f.bin
-  - vid_6g.bin
-  - vid_6h.bin
-  - vid_6j.bin
-  - vid_6k.bin
-  - vid_6l.bin
-  - vid_6n.bin
-  - vid_6o.bin
-  - vid_6p.bin
+  - silkworm.1
+  - silkworm.10
+  - silkworm.11
+  - silkworm.12
+  - silkworm.13
+  - silkworm.14
+  - silkworm.15
+  - silkworm.16
+  - silkworm.17
+  - silkworm.2
+  - silkworm.3
+  - silkworm.4
+  - silkworm.5
+  - silkworm.6
+  - silkworm.7
+  - silkworm.8
+  - silkworm.9
