@@ -98,7 +98,7 @@ void sprite_draw(bitmap_t *bitmap, uint8_t *ram, uint8_t *rom, uint16_t palette_
 
 		if (enable) {
       uint8_t bank = ram[addr];
-      uint16_t code = (bank & 0xf0)<<4 | ram[addr + 1];
+      uint16_t code = (bank & 0xf8)<<5 | ram[addr + 1];
       int size = ram[addr + 2] & 0x03;
 
       /* Ensure the lower sprite code bits are masked. This is required because
