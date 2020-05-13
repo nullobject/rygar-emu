@@ -64,19 +64,19 @@
 #define SPRITE_ROM_SIZE 0x80000
 
 #define WORK_RAM_SIZE 0x1000
-#define WORK_RAM_START 0xc000
+#define WORK_RAM_START 0xd000
 #define WORK_RAM_END (WORK_RAM_START + WORK_RAM_SIZE - 1)
 
 #define CHAR_RAM_SIZE 0x800
-#define CHAR_RAM_START 0xd000
+#define CHAR_RAM_START 0xc800
 #define CHAR_RAM_END (CHAR_RAM_START + CHAR_RAM_SIZE - 1)
 
 #define FG_RAM_SIZE 0x400
-#define FG_RAM_START 0xd800
+#define FG_RAM_START 0xc400
 #define FG_RAM_END (FG_RAM_START + FG_RAM_SIZE - 1)
 
 #define BG_RAM_SIZE 0x400
-#define BG_RAM_START 0xdc00
+#define BG_RAM_START 0xc000
 #define BG_RAM_END (BG_RAM_START + BG_RAM_SIZE - 1)
 
 #define SPRITE_RAM_SIZE 0x800
@@ -91,7 +91,7 @@
 #define RAM_START 0xc000
 #define RAM_END (RAM_START + RAM_SIZE - 1)
 
-#define BANK_SIZE 0x8000
+#define BANK_SIZE 0x10000
 #define BANK_WINDOW_SIZE 0x800
 #define BANK_WINDOW_START 0xf000
 #define BANK_WINDOW_END (BANK_WINDOW_START + BANK_WINDOW_SIZE - 1)
@@ -129,7 +129,7 @@
  * need to include this offset in our scroll values, so we must correct it. */
 #define SCROLL_OFFSET 48
 
-#define CPU_FREQ 4000000
+#define CPU_FREQ 6000000
 #define VSYNC_PERIOD_4MHZ (CPU_FREQ / 60)
 #define VBLANK_DURATION_4MHZ (((CPU_FREQ / 60) / 525) * (525 - 483))
 
@@ -376,7 +376,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x30000], dump_silkworm_13, 0x10000);
 
   /* decode fg rom */
-  tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.fg_rom, 1024);
+  tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.fg_rom, 2024);
 
   tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t) {
     .tile_cb = fg_tile_info,
@@ -394,7 +394,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x30000], dump_silkworm_17, 0x10000);
 
   /* decode bg rom */
-  tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.bg_rom, 1024);
+  tile_decode(&tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.bg_rom, 2024);
 
   tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t) {
     .tile_cb = bg_tile_info,
@@ -412,7 +412,7 @@ static void rygar_decode_tiles() {
   memcpy(&tmp[0x30000], dump_silkworm_9, 0x10000);
 
   /* decode sprite rom */
-  tile_decode(&tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.sprite_rom, 4096);
+  tile_decode(&tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.sprite_rom, 8096);
 }
 
 /**
@@ -429,7 +429,7 @@ static void rygar_init() {
   bitmap_init(&rygar.bitmap, BUFFER_WIDTH, BUFFER_HEIGHT);
 
   /* main memory */
-  mem_map_rom(&rygar.main.mem, 0, 0x00000, 0x10000, dump_silkworm_4);
+  mem_map_rom(&rygar.main.mem, 0, 0x0000, 0xc000, dump_silkworm_4);
   mem_map_ram(&rygar.main.mem, 0, WORK_RAM_START, WORK_RAM_SIZE, rygar.main.work_ram);
   mem_map_ram(&rygar.main.mem, 0, CHAR_RAM_START, CHAR_RAM_SIZE, rygar.main.char_ram);
   mem_map_ram(&rygar.main.mem, 0, FG_RAM_START, FG_RAM_SIZE, rygar.main.fg_ram);
