@@ -1,5 +1,5 @@
 #pragma once
-/* 
+/*
     Common graphics functions for the chips-test example emulators.
 
     REMINDER: consider using this CRT shader?
@@ -45,22 +45,19 @@ void gfx_flash_error(void);
 #include "sokol_gfx.h"
 #include "sokol_app.h"
 #include "sokol_time.h"
+#include "sokol_glue.h"
 #include "shaders.glsl.h"
 
 #define _GFX_DEF(v,def) (v?v:def)
 
-static const sg_pass_action gfx_upscale_pass_action = {
-    .colors[0] = { .action = SG_ACTION_DONTCARE }
-};
-static sg_pass_action gfx_draw_pass_action = {
-    .colors[0] = { .action = SG_ACTION_CLEAR, .val = { 0.05f, 0.05f, 0.05f, 1.0f } }
-};
-typedef struct {
+static struct {
     sg_pipeline upscale_pip;
     sg_bindings upscale_bind;
     sg_pass upscale_pass;
     sg_pipeline display_pip;
     sg_bindings display_bind;
+    sg_pass_action upscale_pass_action;
+    sg_pass_action draw_pass_action;
     int flash_success_count;
     int flash_error_count;
     int top_offset;
@@ -71,8 +68,7 @@ typedef struct {
     bool rot90;
     uint32_t rgba8_buffer[GFX_MAX_FB_WIDTH * GFX_MAX_FB_HEIGHT];
     void (*draw_extra_cb)(void);
-} gfx_state;
-static gfx_state gfx;
+} gfx;
 
 void gfx_flash_success(void) {
     gfx.flash_success_count = 20;
@@ -126,6 +122,14 @@ void gfx_init_images_and_pass(void) {
 }
 
 void gfx_init(const gfx_desc_t* desc) {
+
+    gfx.upscale_pass_action = (sg_pass_action) {
+        .colors[0] = { .action = SG_ACTION_DONTCARE }
+    };
+    gfx.draw_pass_action = (sg_pass_action) {
+        .colors[0] = { .action = SG_ACTION_CLEAR, .value = { 0.05f, 0.05f, 0.05f, 1.0f } }
+    };
+
     gfx.top_offset = desc->top_offset;
     gfx.fb_width = 0;
     gfx.fb_height = 0;
@@ -139,13 +143,7 @@ void gfx_init(const gfx_desc_t* desc) {
         .shader_pool_size = 4,
         .pipeline_pool_size = 4,
         .context_pool_size = 2,
-        .mtl_device = sapp_metal_get_device(),
-        .mtl_renderpass_descriptor_cb = sapp_metal_get_renderpass_descriptor,
-        .mtl_drawable_cb = sapp_metal_get_drawable,
-        .d3d11_device = sapp_d3d11_get_device(),
-        .d3d11_device_context = sapp_d3d11_get_device_context(),
-        .d3d11_render_target_view_cb = sapp_d3d11_get_render_target_view,
-        .d3d11_depth_stencil_view_cb = sapp_d3d11_get_depth_stencil_view
+        .context = sapp_sgcontext()
     });
 
     /* quad vertex buffers with and without flipped UVs */
@@ -174,19 +172,20 @@ void gfx_init(const gfx_desc_t* desc) {
         1.0f, 1.0f, 0.0f, 0.0f
     };
     gfx.upscale_bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
-        .size = sizeof(verts),
-        .content = verts,
+        .data = SG_RANGE(verts)
     });
     gfx.display_bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
-        .size = sizeof(verts),
-        .content = sg_query_features().origin_top_left ? 
-                        (gfx.rot90 ? verts_rot : verts) :
-                        (gfx.rot90 ? verts_flipped_rot : verts_flipped)
+        .data = {
+            .ptr = sg_query_features().origin_top_left ?
+                    (gfx.rot90 ? verts_rot : verts) :
+                    (gfx.rot90 ? verts_flipped_rot : verts_flipped),
+            .size = sizeof(verts)
+        }
     });
 
     /* 2 pipeline-state-objects, one for upscaling, one for rendering */
     gfx.display_pip = sg_make_pipeline(&(sg_pipeline_desc){
-        .shader = sg_make_shader(display_shader_desc()),
+        .shader = sg_make_shader(display_shader_desc(sg_query_backend())),
         .layout = {
             .attrs = {
                 [0].format = SG_VERTEXFORMAT_FLOAT2,
@@ -196,7 +195,7 @@ void gfx_init(const gfx_desc_t* desc) {
         .primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP
     });
     gfx.upscale_pip = sg_make_pipeline(&(sg_pipeline_desc){
-        .shader = sg_make_shader(upscale_shader_desc()),
+        .shader = sg_make_shader(upscale_shader_desc(sg_query_backend())),
         .layout = {
             .attrs = {
                 [0].format = SG_VERTEXFORMAT_FLOAT2,
@@ -204,7 +203,7 @@ void gfx_init(const gfx_desc_t* desc) {
             }
         },
         .primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP,
-        .blend.depth_format = SG_PIXELFORMAT_NONE
+        .depth.pixel_format = SG_PIXELFORMAT_NONE
     });
 }
 
@@ -242,15 +241,15 @@ void gfx_draw(int width, int height) {
     }
 
     /* copy emulator pixel data into upscaling source texture */
-    sg_update_image(gfx.upscale_bind.fs_images[0], &(sg_image_content){
-        .subimage[0][0] = { 
+    sg_update_image(gfx.upscale_bind.fs_images[0], &(sg_image_data){
+        .subimage[0][0] = {
             .ptr = gfx.rgba8_buffer,
             .size = gfx.fb_width*gfx.fb_height*sizeof(uint32_t)
         }
     });
 
     /* upscale the original framebuffer 2x with nearest filtering */
-    sg_begin_pass(gfx.upscale_pass, &gfx_upscale_pass_action);
+    sg_begin_pass(gfx.upscale_pass, &gfx.upscale_pass_action);
     sg_apply_pipeline(gfx.upscale_pip);
     sg_apply_bindings(&gfx.upscale_bind);
     sg_draw(0, 4, 1);
@@ -259,21 +258,21 @@ void gfx_draw(int width, int height) {
     /* tint the clear color red or green if flash feedback is requested */
     if (gfx.flash_error_count > 0) {
         gfx.flash_error_count--;
-        gfx_draw_pass_action.colors[0].val[0] = 0.7f;
+        gfx.draw_pass_action.colors[0].value.r = 0.7f;
     }
     else if (gfx.flash_success_count > 0) {
         gfx.flash_success_count--;
-        gfx_draw_pass_action.colors[0].val[1] = 0.7f;
+        gfx.draw_pass_action.colors[0].value.g = 0.7f;
     }
     else {
-        gfx_draw_pass_action.colors[0].val[0] = 0.05f;
-        gfx_draw_pass_action.colors[0].val[1] = 0.05f;
+        gfx.draw_pass_action.colors[0].value.r = 0.05f;
+        gfx.draw_pass_action.colors[0].value.g = 0.05f;
     }
 
     /* draw the final pass with linear filtering */
     int w = (int) sapp_width();
     int h = (int) sapp_height();
-    sg_begin_default_pass(&gfx_draw_pass_action, w, h);
+    sg_begin_default_pass(&gfx.draw_pass_action, w, h);
     apply_viewport(w, h);
     sg_apply_pipeline(gfx.display_pip);
     sg_apply_bindings(&gfx.display_bind);
@@ -306,7 +305,7 @@ void* gfx_create_texture(int w, int h) {
 
 void gfx_update_texture(void* h, void* data, int data_byte_size) {
     sg_image img = { .id=(uint32_t)(uintptr_t)h };
-    sg_update_image(img, &(sg_image_content){.subimage[0][0] = { .ptr = data, .size=data_byte_size } });
+    sg_update_image(img, &(sg_image_data){.subimage[0][0] = { .ptr = data, .size=data_byte_size } });
 }
 
 void gfx_destroy_texture(void* h) {
