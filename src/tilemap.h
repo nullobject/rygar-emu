@@ -59,6 +59,7 @@ typedef struct {
 
 /* descriptor for initialising a tilemap */
 typedef struct {
+  uint8_t *ram;
   uint8_t *rom;
 
   /* dimensions */
@@ -68,11 +69,12 @@ typedef struct {
   int cols;
 
   /* tile info callback */
-  void (*tile_cb)(tile_t *tile, int index);
+  void (*tile_cb)(uint8_t *ram, tile_t *tile, int index);
 } tilemap_desc_t;
 
 /* the tilemap */
 typedef struct {
+  uint8_t *ram;
   uint8_t *rom;
 
   /* dimensions */
@@ -92,7 +94,7 @@ typedef struct {
   tile_t tiles[MAX_TILE_COLS * MAX_TILE_ROWS];
 
   /* tile info callback */
-  void (*tile_cb)(tile_t *tile, int index);
+  void (*tile_cb)(uint8_t *ram, tile_t *tile, int index);
 } tilemap_t;
 
 /*
@@ -104,6 +106,7 @@ void tilemap_init(tilemap_t *tilemap, const tilemap_desc_t *desc) {
 
   memset(tilemap, 0, sizeof(tilemap_t));
 
+  tilemap->ram = desc->ram;
   tilemap->rom = desc->rom;
   tilemap->tile_width = desc->tile_width;
   tilemap->tile_height = desc->tile_height;
@@ -156,7 +159,7 @@ void tilemap_draw(tilemap_t *tilemap, bitmap_t *bitmap, uint16_t palette_offset,
       tile_t *tile = &tilemap->tiles[index];
 
       if (tile->flags & TILEMAP_TILE_DIRTY) {
-        tilemap->tile_cb(tile, index);
+        tilemap->tile_cb(tilemap->ram, tile, index);
 
         int x = col * tilemap->tile_width;
         int y = row * tilemap->tile_height;
