@@ -129,7 +129,7 @@
  * need to include this offset in our scroll values, so we must correct it. */
 #define SCROLL_OFFSET 48
 
-#define CPU_FREQ 4000000
+#define CPU_FREQ 6000000
 #define VSYNC_PERIOD_4MHZ (CPU_FREQ / 60)
 #define VBLANK_DURATION_4MHZ (((CPU_FREQ / 60) / 525) * (525 - 483))
 
