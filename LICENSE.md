@@ -1,6 +1,6 @@
-The MIT Licence (MIT)
+The MIT License (MIT)
 
-Copyright (c) 2019 Josh Bassett
+Copyright (c) 2025 Joshua Bassett
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
