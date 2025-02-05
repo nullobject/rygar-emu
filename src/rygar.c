@@ -33,6 +33,8 @@
  * SOFTWARE.
  */
 
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_init.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -614,9 +616,78 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
 /* This function runs when a new event (mouse input, keypresses, etc) occurs. */
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
-  if (event->type == SDL_EVENT_QUIT) {
-    return SDL_APP_SUCCESS; /* end the program, reporting success to the OS. */
+  switch (event->type) {
+    case SDL_EVENT_QUIT:
+      return SDL_APP_SUCCESS;
+    case SDL_EVENT_KEY_DOWN:
+      switch (event->key.scancode) {
+        case SDL_SCANCODE_LEFT:
+          rygar.main.joystick |= (1 << 0);
+          break;
+        case SDL_SCANCODE_RIGHT:
+          rygar.main.joystick |= (1 << 1);
+          break;
+        case SDL_SCANCODE_DOWN:
+          rygar.main.joystick |= (1 << 2);
+          break;
+        case SDL_SCANCODE_UP:
+          rygar.main.joystick |= (1 << 3);
+          break;
+        case SDL_SCANCODE_Z:
+          rygar.main.buttons |= (1 << 0);
+          break; /* attack */
+        case SDL_SCANCODE_X:
+          rygar.main.buttons |= (1 << 1);
+          break; /* jump */
+        case SDL_SCANCODE_5:
+          rygar.main.sys |= (1 << 2);
+          break; /* player 1 coin */
+        case SDL_SCANCODE_1:
+          rygar.main.sys |= (1 << 1);
+          break; /* player 1 start */
+        case SDL_SCANCODE_P:
+          rygar.capture = true;
+          break; /* capture */
+        default:
+          break;
+      }
+      break;
+
+    case SDL_EVENT_KEY_UP:
+      switch (event->key.scancode) {
+        case SDL_SCANCODE_LEFT:
+          rygar.main.joystick &= ~(1 << 0);
+          break;
+        case SDL_SCANCODE_RIGHT:
+          rygar.main.joystick &= ~(1 << 1);
+          break;
+        case SDL_SCANCODE_DOWN:
+          rygar.main.joystick &= ~(1 << 2);
+          break;
+        case SDL_SCANCODE_UP:
+          rygar.main.joystick &= ~(1 << 3);
+          break;
+        case SDL_SCANCODE_Z:
+          rygar.main.buttons &= ~(1 << 0);
+          break; /* attack */
+        case SDL_SCANCODE_X:
+          rygar.main.buttons &= ~(1 << 1);
+          break; /* jump */
+        case SDL_SCANCODE_5:
+          rygar.main.sys &= ~(1 << 2);
+          break; /* player 1 coin */
+        case SDL_SCANCODE_1:
+          rygar.main.sys &= ~(1 << 1);
+          break; /* player 1 start */
+        default:
+          break;
+      }
+      break;
+
+    default:
+      break;
   }
+
   return SDL_APP_CONTINUE;
 }
 
@@ -647,75 +718,3 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
   rygar_shutdown();
 }
-
-// static void app_input(const sapp_event *event) {
-//   switch (event->type) {
-//     case SAPP_EVENTTYPE_KEY_DOWN:
-//       switch (event->key_code) {
-//         case SAPP_KEYCODE_LEFT:
-//           rygar.main.joystick |= (1 << 0);
-//           break;
-//         case SAPP_KEYCODE_RIGHT:
-//           rygar.main.joystick |= (1 << 1);
-//           break;
-//         case SAPP_KEYCODE_DOWN:
-//           rygar.main.joystick |= (1 << 2);
-//           break;
-//         case SAPP_KEYCODE_UP:
-//           rygar.main.joystick |= (1 << 3);
-//           break;
-//         case SAPP_KEYCODE_Z:
-//           rygar.main.buttons |= (1 << 0);
-//           break; /* attack */
-//         case SAPP_KEYCODE_X:
-//           rygar.main.buttons |= (1 << 1);
-//           break; /* jump */
-//         case SAPP_KEYCODE_5:
-//           rygar.main.sys |= (1 << 2);
-//           break; /* player 1 coin */
-//         case SAPP_KEYCODE_1:
-//           rygar.main.sys |= (1 << 1);
-//           break; /* player 1 start */
-//         case SAPP_KEYCODE_P:
-//           rygar.capture = true;
-//           break; /* capture */
-//         default:
-//           break;
-//       }
-//       break;
-//
-//     case SAPP_EVENTTYPE_KEY_UP:
-//       switch (event->key_code) {
-//         case SAPP_KEYCODE_LEFT:
-//           rygar.main.joystick &= ~(1 << 0);
-//           break;
-//         case SAPP_KEYCODE_RIGHT:
-//           rygar.main.joystick &= ~(1 << 1);
-//           break;
-//         case SAPP_KEYCODE_DOWN:
-//           rygar.main.joystick &= ~(1 << 2);
-//           break;
-//         case SAPP_KEYCODE_UP:
-//           rygar.main.joystick &= ~(1 << 3);
-//           break;
-//         case SAPP_KEYCODE_Z:
-//           rygar.main.buttons &= ~(1 << 0);
-//           break; /* attack */
-//         case SAPP_KEYCODE_X:
-//           rygar.main.buttons &= ~(1 << 1);
-//           break; /* jump */
-//         case SAPP_KEYCODE_5:
-//           rygar.main.sys &= ~(1 << 2);
-//           break; /* player 1 coin */
-//         case SAPP_KEYCODE_1:
-//           rygar.main.sys &= ~(1 << 1);
-//           break; /* player 1 start */
-//         default:
-//           break;
-//       }
-//       break;
-//
-//     default:
-//       break;
-//   }
-// }
