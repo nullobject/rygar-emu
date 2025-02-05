@@ -11,10 +11,8 @@
  *    \/_____/   \/_____/ \/_____/   \/_____/   \/_____/     \/_/
  *
  * https://joshbassett.info
- * https://twitter.com/nullobject
- * https://github.com/nullobject
  *
- * Copyright (c) 2020 Josh Bassett
+ * Copyright (c) 2025 Joshua Bassett
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +21,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -148,7 +146,10 @@ void tilemap_set_scroll_y(tilemap_t *tilemap, const uint16_t value) {
 /**
  * Draws the tilemap to the given bitmap.
  */
-void tilemap_draw(tilemap_t *tilemap, bitmap_t *bitmap, uint16_t palette_offset, uint8_t flags) {
+void tilemap_draw(tilemap_t *tilemap,
+                  bitmap_t *bitmap,
+                  uint16_t palette_offset,
+                  uint8_t flags) {
   /* force opaque drawing, otherwise old pixels in the buffer will be visible
    * through any transparent parts of the tile */
   flags |= TILE_OPAQUE;
@@ -164,18 +165,20 @@ void tilemap_draw(tilemap_t *tilemap, bitmap_t *bitmap, uint16_t palette_offset,
         int x = col * tilemap->tile_width;
         int y = row * tilemap->tile_height;
 
-        tile_draw(
-          &tilemap->bitmap,
-          tilemap->rom,
-          tile->code,
-          tile->color,
-          palette_offset,
-          x, y,
-          tilemap->tile_width, tilemap->tile_height,
-          false, false,
-          0, /* don't bother masking, as we're only rendering to the internal buffer */
-          flags
-        );
+        tile_draw(&tilemap->bitmap,
+                  tilemap->rom,
+                  tile->code,
+                  tile->color,
+                  palette_offset,
+                  x,
+                  y,
+                  tilemap->tile_width,
+                  tilemap->tile_height,
+                  false,
+                  false,
+                  0, /* don't bother masking, as we're only rendering to the
+                        internal buffer */
+                  flags);
 
         tile->flags ^= TILEMAP_TILE_DIRTY;
       }
