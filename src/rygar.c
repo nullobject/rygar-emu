@@ -698,6 +698,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   uint32_t *pixels;
   int pitch;
 
+  if (delta > 24) {
+    delta = 24;
+  }
+
   if (!SDL_LockTexture(texture, NULL, (void **)&pixels, &pitch)) {
     SDL_Log("Couldn't lock texture: %s", SDL_GetError());
     return SDL_APP_FAILURE;
