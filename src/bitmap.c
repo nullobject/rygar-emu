@@ -33,35 +33,60 @@
  * SOFTWARE.
  */
 
-#pragma once
+#include "bitmap.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+void bitmap_init(bitmap_t *bitmap, int width, int height) {
+  memset(bitmap, 0, sizeof(bitmap_t));
+  bitmap->width = width;
+  bitmap->height = height;
+  bitmap->data = (uint16_t *)calloc(width * height, sizeof(uint16_t));
+  bitmap->priority = (uint8_t *)calloc(width * height, sizeof(uint8_t));
+}
 
-typedef struct {
-  /* dimensions */
-  int width;
-  int height;
+void bitmap_shutdown(bitmap_t *bitmap) {
+  free(bitmap->data);
+  free(bitmap->priority);
+  bitmap->data = 0;
+  bitmap->priority = 0;
+}
 
-  /* bitmap data */
-  uint16_t *data;
+uint16_t *bitmap_data(bitmap_t *bitmap, int x, int y) {
+  return (bitmap->data + y * bitmap->width) + x;
+}
 
-  /* priority map */
-  uint8_t *priority;
-} bitmap_t;
+uint8_t *bitmap_priority(bitmap_t *bitmap, int x, int y) {
+  return (bitmap->priority + y * bitmap->width) + x;
+}
 
-void bitmap_init(bitmap_t *bitmap, int width, int height);
+void bitmap_fill(bitmap_t *bitmap, uint16_t color) {
+  uint16_t *data = bitmap->data;
+  uint8_t *priority = bitmap->priority;
 
-void bitmap_shutdown(bitmap_t *bitmap);
+  for (int i = 0; i < bitmap->width * bitmap->height; i++) {
+    *data++ = color;
+    *priority++ = 0;
+  }
+}
 
-uint16_t *bitmap_data(bitmap_t *bitmap, int x, int y);
+void bitmap_copy(bitmap_t *src, bitmap_t *dst, int scroll_x, int scroll_y) {
+  uint16_t *data = dst->data;
+  uint8_t *priority = dst->priority;
 
-uint8_t *bitmap_priority(bitmap_t *bitmap, int x, int y);
+  for (int y = 0; y < dst->height; y++) {
+    for (int x = 0; x < dst->width; x++) {
+      /* Calculate the wrapped coordinates in tilemap space. Wrapping occurs
+       * when the visible area is outside of the tilemap. */
+      uint32_t wrapped_x = (x + scroll_x) % src->width;
+      uint32_t wrapped_y = (y + scroll_y) % src->height;
+      uint32_t addr = (wrapped_y * src->width) + wrapped_x;
 
-void bitmap_fill(bitmap_t *bitmap, uint16_t color);
+      if (src->priority[addr]) {
+        *data = src->data[addr];
+        *priority = src->priority[addr];
+      }
 
-/**
- * Copies a bitmap, respecting the priority of the pixels.
- */
-void bitmap_copy(bitmap_t *src, bitmap_t *dst, int scroll_x, int scroll_y);
+      data++;
+      priority++;
+    }
+  }
+}

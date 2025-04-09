@@ -98,50 +98,27 @@ typedef struct {
 /*
  * Initialises a new tilemap instance.
  */
-void tilemap_init(tilemap_t *tilemap, const tilemap_desc_t *desc) {
-  int width = desc->tile_width * desc->cols;
-  int height = desc->tile_height * desc->rows;
-
-  memset(tilemap, 0, sizeof(tilemap_t));
-
-  tilemap->ram = desc->ram;
-  tilemap->rom = desc->rom;
-  tilemap->tile_width = desc->tile_width;
-  tilemap->tile_height = desc->tile_height;
-  tilemap->cols = desc->cols;
-  tilemap->rows = desc->rows;
-  tilemap->tile_cb = desc->tile_cb;
-
-  bitmap_init(&tilemap->bitmap, width, height);
-}
+void tilemap_init(tilemap_t *tilemap, const tilemap_desc_t *desc);
 
 /**
  * Tears down the tilemap.
  */
-void tilemap_shutdown(tilemap_t *tilemap) {
-  bitmap_shutdown(&tilemap->bitmap);
-}
+void tilemap_shutdown(tilemap_t *tilemap);
 
 /**
  * Marks the given tile as dirty.
  */
-void tilemap_mark_tile_dirty(tilemap_t *tilemap, const int index) {
-  tilemap->tiles[index].flags |= TILEMAP_TILE_DIRTY;
-}
+void tilemap_mark_tile_dirty(tilemap_t *tilemap, const int index);
 
 /**
  * Sets the horizontal scroll offset.
  */
-void tilemap_set_scroll_x(tilemap_t *tilemap, const uint16_t value) {
-  tilemap->scroll_x = value;
-}
+void tilemap_set_scroll_x(tilemap_t *tilemap, const uint16_t value);
 
 /**
  * Sets the vertical scroll offset.
  */
-void tilemap_set_scroll_y(tilemap_t *tilemap, const uint16_t value) {
-  tilemap->scroll_y = value;
-}
+void tilemap_set_scroll_y(tilemap_t *tilemap, const uint16_t value);
 
 /**
  * Draws the tilemap to the given bitmap.
@@ -149,42 +126,4 @@ void tilemap_set_scroll_y(tilemap_t *tilemap, const uint16_t value) {
 void tilemap_draw(tilemap_t *tilemap,
                   bitmap_t *bitmap,
                   uint16_t palette_offset,
-                  uint8_t flags) {
-  /* force opaque drawing, otherwise old pixels in the buffer will be visible
-   * through any transparent parts of the tile */
-  flags |= TILE_OPAQUE;
-
-  for (int row = 0; row < tilemap->rows; row++) {
-    for (int col = 0; col < tilemap->cols; col++) {
-      int index = (row * tilemap->cols) + col;
-      tile_t *tile = &tilemap->tiles[index];
-
-      if (tile->flags & TILEMAP_TILE_DIRTY) {
-        tilemap->tile_cb(tilemap->ram, tile, index);
-
-        int x = col * tilemap->tile_width;
-        int y = row * tilemap->tile_height;
-
-        tile_draw(&tilemap->bitmap,
-                  tilemap->rom,
-                  tile->code,
-                  tile->color,
-                  palette_offset,
-                  x,
-                  y,
-                  tilemap->tile_width,
-                  tilemap->tile_height,
-                  false,
-                  false,
-                  0, /* don't bother masking, as we're only rendering to the
-                        internal buffer */
-                  flags);
-
-        tile->flags ^= TILEMAP_TILE_DIRTY;
-      }
-    }
-  }
-
-  /* copy the internal buffer to the output bitmap */
-  bitmap_copy(&tilemap->bitmap, bitmap, tilemap->scroll_x, tilemap->scroll_y);
-}
+                  uint8_t flags);

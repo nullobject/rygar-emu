@@ -268,22 +268,20 @@ uint64_t rygar_tick_main(uint64_t pins) {
       } else if (BETWEEN(addr, FG_SCROLL_START, FG_SCROLL_END)) {
         uint8_t offset = addr - FG_SCROLL_START;
         rygar.main.fg_scroll[offset] = data;
-        tilemap_set_scroll_x(
-          &rygar.fg_tilemap,
-          (rygar.main.fg_scroll[1] << 8 | rygar.main.fg_scroll[0]) +
-            SCROLL_OFFSET);
+        tilemap_set_scroll_x(&rygar.fg_tilemap, (rygar.main.fg_scroll[1] << 8 |
+                                                 rygar.main.fg_scroll[0]) +
+                                                    SCROLL_OFFSET);
         tilemap_set_scroll_y(&rygar.fg_tilemap, (rygar.main.fg_scroll[2]));
       } else if (BETWEEN(addr, BG_SCROLL_START, BG_SCROLL_END)) {
         uint8_t offset = addr - BG_SCROLL_START;
         rygar.main.bg_scroll[offset] = data;
-        tilemap_set_scroll_x(
-          &rygar.bg_tilemap,
-          (rygar.main.bg_scroll[1] << 8 | rygar.main.bg_scroll[0]) +
-            SCROLL_OFFSET);
+        tilemap_set_scroll_x(&rygar.bg_tilemap, (rygar.main.bg_scroll[1] << 8 |
+                                                 rygar.main.bg_scroll[0]) +
+                                                    SCROLL_OFFSET);
         tilemap_set_scroll_y(&rygar.bg_tilemap, (rygar.main.bg_scroll[2]));
       } else if (addr == BANK_SWITCH) {
         rygar.main.current_bank =
-          data >> 3; /* bank addressed by DO3-DO6 in schematic */
+            data >> 3; /* bank addressed by DO3-DO6 in schematic */
       }
     } else if (pins & Z80_RD) {
       if (addr <= RAM_END) {
@@ -358,43 +356,42 @@ void rygar_decode_tiles() {
 
   /* decode descriptor for a 8x8 tile */
   tile_decode_desc_t tile_decode_8x8 = {
-    .tile_width = 8,
-    .tile_height = 8,
-    .planes = 4,
-    .plane_offsets = { STEP4(0, 1) },
-    .x_offsets = { STEP8(0, 4) },
-    .y_offsets = { STEP8(0, 4 * 8) },
-    .tile_size = 4 * 8, /* 32 bytes */
+      .tile_width = 8,
+      .tile_height = 8,
+      .planes = 4,
+      .plane_offsets = {STEP4(0, 1)},
+      .x_offsets = {STEP8(0, 4)},
+      .y_offsets = {STEP8(0, 4 * 8)},
+      .tile_size = 4 * 8, /* 32 bytes */
   };
 
   /* decode descriptor for a 16x16 tile, made up of four 8x8 tiles */
   tile_decode_desc_t tile_decode_16x16 = {
-    .tile_width = 16,
-    .tile_height = 16,
-    .planes = 4,
-    .plane_offsets = { STEP4(0, 1) },
-    .x_offsets = { STEP8(0, 4), STEP8(4 * 8 * 8, 4) },
-    .y_offsets = { STEP8(0, 4 * 8), STEP8(4 * 8 * 8 * 2, 4 * 8) },
-    .tile_size = 4 * 4 * 8, /* 128 bytes */
+      .tile_width = 16,
+      .tile_height = 16,
+      .planes = 4,
+      .plane_offsets = {STEP4(0, 1)},
+      .x_offsets = {STEP8(0, 4), STEP8(4 * 8 * 8, 4)},
+      .y_offsets = {STEP8(0, 4 * 8), STEP8(4 * 8 * 8 * 2, 4 * 8)},
+      .tile_size = 4 * 4 * 8, /* 128 bytes */
   };
 
   /* char rom */
   memcpy(&tmp[0x00000], dump_cpu_8k, 0x8000);
 
   /* decode char rom */
-  tile_decode(
-    &tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.char_rom, 1024);
+  tile_decode(&tile_decode_8x8, (uint8_t *)&tmp,
+              (uint8_t *)&rygar.main.char_rom, 1024);
 
-  tilemap_init(&rygar.char_tilemap,
-               &(tilemap_desc_t){
-                 .tile_cb = char_tile_info,
-                 .ram = rygar.main.char_ram,
-                 .rom = rygar.main.char_rom,
-                 .tile_width = 8,
-                 .tile_height = 8,
-                 .cols = 32,
-                 .rows = 32,
-               });
+  tilemap_init(&rygar.char_tilemap, &(tilemap_desc_t){
+                                        .tile_cb = char_tile_info,
+                                        .ram = rygar.main.char_ram,
+                                        .rom = rygar.main.char_rom,
+                                        .tile_width = 8,
+                                        .tile_height = 8,
+                                        .cols = 32,
+                                        .rows = 32,
+                                    });
 
   /* fg rom */
   memcpy(&tmp[0x00000], dump_vid_6p, 0x8000);
@@ -403,19 +400,18 @@ void rygar_decode_tiles() {
   memcpy(&tmp[0x18000], dump_vid_6l, 0x8000);
 
   /* decode fg rom */
-  tile_decode(
-    &tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.fg_rom, 1024);
+  tile_decode(&tile_decode_16x16, (uint8_t *)&tmp,
+              (uint8_t *)&rygar.main.fg_rom, 1024);
 
-  tilemap_init(&rygar.fg_tilemap,
-               &(tilemap_desc_t){
-                 .tile_cb = fg_tile_info,
-                 .ram = rygar.main.fg_ram,
-                 .rom = rygar.main.fg_rom,
-                 .tile_width = 16,
-                 .tile_height = 16,
-                 .cols = 32,
-                 .rows = 16,
-               });
+  tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t){
+                                      .tile_cb = fg_tile_info,
+                                      .ram = rygar.main.fg_ram,
+                                      .rom = rygar.main.fg_rom,
+                                      .tile_width = 16,
+                                      .tile_height = 16,
+                                      .cols = 32,
+                                      .rows = 16,
+                                  });
 
   /* bg rom */
   memcpy(&tmp[0x00000], dump_vid_6f, 0x8000);
@@ -424,19 +420,18 @@ void rygar_decode_tiles() {
   memcpy(&tmp[0x18000], dump_vid_6b, 0x8000);
 
   /* decode bg rom */
-  tile_decode(
-    &tile_decode_16x16, (uint8_t *)&tmp, (uint8_t *)&rygar.main.bg_rom, 1024);
+  tile_decode(&tile_decode_16x16, (uint8_t *)&tmp,
+              (uint8_t *)&rygar.main.bg_rom, 1024);
 
-  tilemap_init(&rygar.bg_tilemap,
-               &(tilemap_desc_t){
-                 .tile_cb = bg_tile_info,
-                 .ram = rygar.main.bg_ram,
-                 .rom = rygar.main.bg_rom,
-                 .tile_width = 16,
-                 .tile_height = 16,
-                 .cols = 32,
-                 .rows = 16,
-               });
+  tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t){
+                                      .tile_cb = bg_tile_info,
+                                      .ram = rygar.main.bg_ram,
+                                      .rom = rygar.main.bg_rom,
+                                      .tile_width = 16,
+                                      .tile_height = 16,
+                                      .cols = 32,
+                                      .rows = 16,
+                                  });
 
   /* sprite rom */
   memcpy(&tmp[0x00000], dump_vid_6k, 0x8000);
@@ -445,8 +440,8 @@ void rygar_decode_tiles() {
   memcpy(&tmp[0x18000], dump_vid_6g, 0x8000);
 
   /* decode sprite rom */
-  tile_decode(
-    &tile_decode_8x8, (uint8_t *)&tmp, (uint8_t *)&rygar.main.sprite_rom, 4096);
+  tile_decode(&tile_decode_8x8, (uint8_t *)&tmp,
+              (uint8_t *)&rygar.main.sprite_rom, 4096);
 }
 
 /**
@@ -465,21 +460,15 @@ void rygar_init() {
   /* main memory */
   mem_map_rom(&rygar.main.mem, 0, 0x0000, 0x8000, dump_5);
   mem_map_rom(&rygar.main.mem, 0, 0x8000, 0x4000, dump_cpu_5m);
-  mem_map_ram(
-    &rygar.main.mem, 0, WORK_RAM_START, WORK_RAM_SIZE, rygar.main.work_ram);
-  mem_map_ram(
-    &rygar.main.mem, 0, CHAR_RAM_START, CHAR_RAM_SIZE, rygar.main.char_ram);
+  mem_map_ram(&rygar.main.mem, 0, WORK_RAM_START, WORK_RAM_SIZE,
+              rygar.main.work_ram);
+  mem_map_ram(&rygar.main.mem, 0, CHAR_RAM_START, CHAR_RAM_SIZE,
+              rygar.main.char_ram);
   mem_map_ram(&rygar.main.mem, 0, FG_RAM_START, FG_RAM_SIZE, rygar.main.fg_ram);
   mem_map_ram(&rygar.main.mem, 0, BG_RAM_START, BG_RAM_SIZE, rygar.main.bg_ram);
-  mem_map_ram(&rygar.main.mem,
-              0,
-              SPRITE_RAM_START,
-              SPRITE_RAM_SIZE,
+  mem_map_ram(&rygar.main.mem, 0, SPRITE_RAM_START, SPRITE_RAM_SIZE,
               rygar.main.sprite_ram);
-  mem_map_ram(&rygar.main.mem,
-              0,
-              PALETTE_RAM_START,
-              PALETTE_RAM_SIZE,
+  mem_map_ram(&rygar.main.mem, 0, PALETTE_RAM_START, PALETTE_RAM_SIZE,
               rygar.main.palette_ram);
 
   /* banked rom */
@@ -514,8 +503,8 @@ void capture_bitmap(bitmap_t *bitmap, char const *filename) {
   apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
 
   /* write the snapshot */
-  stbi_write_png(
-    filename, SCREEN_WIDTH, SCREEN_HEIGHT, 4, buffer, SCREEN_WIDTH * 4);
+  stbi_write_png(filename, SCREEN_WIDTH, SCREEN_HEIGHT, 4, buffer,
+                 SCREEN_WIDTH * 4);
 }
 
 /**
@@ -531,11 +520,8 @@ void rygar_draw(uint32_t *buffer) {
   tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, TILE_LAYER3);
   tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, TILE_LAYER2);
   tilemap_draw(&rygar.char_tilemap, bitmap, 0x100, TILE_LAYER1);
-  sprite_draw(bitmap,
-              (uint8_t *)&rygar.main.sprite_ram,
-              (uint8_t *)&rygar.main.sprite_rom,
-              0,
-              TILE_LAYER0);
+  sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram,
+              (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
 
   /* skip the first 16 lines */
   uint16_t *data = bitmap_data(bitmap, 0, 16);
@@ -547,11 +533,8 @@ void rygar_draw(uint32_t *buffer) {
     printf("capturing...\n");
 
     bitmap_fill(bitmap, 0);
-    sprite_draw(bitmap,
-                (uint8_t *)&rygar.main.sprite_ram,
-                (uint8_t *)&rygar.main.sprite_rom,
-                0,
-                TILE_LAYER0);
+    sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram,
+                (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
     capture_bitmap(bitmap, "sprite.png");
 
     bitmap_fill(bitmap, 0);
@@ -588,20 +571,14 @@ void rygar_exec(uint32_t delta, uint32_t *buffer) {
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
-  if (!SDL_CreateWindowAndRenderer("Hello World",
-                                   WIDTH,
-                                   HEIGHT,
-                                   SDL_WINDOW_RESIZABLE,
-                                   &window,
-                                   &renderer)) {
+  if (!SDL_CreateWindowAndRenderer("Hello World", WIDTH, HEIGHT,
+                                   SDL_WINDOW_RESIZABLE, &window, &renderer)) {
     SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }
 
-  texture = SDL_CreateTexture(renderer,
-                              SDL_PIXELFORMAT_XBGR8888,
-                              SDL_TEXTUREACCESS_STREAMING,
-                              SCREEN_WIDTH,
+  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_XBGR8888,
+                              SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH,
                               SCREEN_HEIGHT);
 
   if (!texture) {
@@ -617,75 +594,75 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 /* This function runs when a new event (mouse input, keypresses, etc) occurs. */
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   switch (event->type) {
-    case SDL_EVENT_QUIT:
-      return SDL_APP_SUCCESS;
-    case SDL_EVENT_KEY_DOWN:
-      switch (event->key.scancode) {
-        case SDL_SCANCODE_LEFT:
-          rygar.main.joystick |= (1 << 0);
-          break;
-        case SDL_SCANCODE_RIGHT:
-          rygar.main.joystick |= (1 << 1);
-          break;
-        case SDL_SCANCODE_DOWN:
-          rygar.main.joystick |= (1 << 2);
-          break;
-        case SDL_SCANCODE_UP:
-          rygar.main.joystick |= (1 << 3);
-          break;
-        case SDL_SCANCODE_Z:
-          rygar.main.buttons |= (1 << 0);
-          break; /* attack */
-        case SDL_SCANCODE_X:
-          rygar.main.buttons |= (1 << 1);
-          break; /* jump */
-        case SDL_SCANCODE_5:
-          rygar.main.sys |= (1 << 2);
-          break; /* player 1 coin */
-        case SDL_SCANCODE_1:
-          rygar.main.sys |= (1 << 1);
-          break; /* player 1 start */
-        case SDL_SCANCODE_P:
-          rygar.capture = true;
-          break; /* capture */
-        default:
-          break;
-      }
+  case SDL_EVENT_QUIT:
+    return SDL_APP_SUCCESS;
+  case SDL_EVENT_KEY_DOWN:
+    switch (event->key.scancode) {
+    case SDL_SCANCODE_LEFT:
+      rygar.main.joystick |= (1 << 0);
       break;
-
-    case SDL_EVENT_KEY_UP:
-      switch (event->key.scancode) {
-        case SDL_SCANCODE_LEFT:
-          rygar.main.joystick &= ~(1 << 0);
-          break;
-        case SDL_SCANCODE_RIGHT:
-          rygar.main.joystick &= ~(1 << 1);
-          break;
-        case SDL_SCANCODE_DOWN:
-          rygar.main.joystick &= ~(1 << 2);
-          break;
-        case SDL_SCANCODE_UP:
-          rygar.main.joystick &= ~(1 << 3);
-          break;
-        case SDL_SCANCODE_Z:
-          rygar.main.buttons &= ~(1 << 0);
-          break; /* attack */
-        case SDL_SCANCODE_X:
-          rygar.main.buttons &= ~(1 << 1);
-          break; /* jump */
-        case SDL_SCANCODE_5:
-          rygar.main.sys &= ~(1 << 2);
-          break; /* player 1 coin */
-        case SDL_SCANCODE_1:
-          rygar.main.sys &= ~(1 << 1);
-          break; /* player 1 start */
-        default:
-          break;
-      }
+    case SDL_SCANCODE_RIGHT:
+      rygar.main.joystick |= (1 << 1);
       break;
-
+    case SDL_SCANCODE_DOWN:
+      rygar.main.joystick |= (1 << 2);
+      break;
+    case SDL_SCANCODE_UP:
+      rygar.main.joystick |= (1 << 3);
+      break;
+    case SDL_SCANCODE_Z:
+      rygar.main.buttons |= (1 << 0);
+      break; /* attack */
+    case SDL_SCANCODE_X:
+      rygar.main.buttons |= (1 << 1);
+      break; /* jump */
+    case SDL_SCANCODE_5:
+      rygar.main.sys |= (1 << 2);
+      break; /* player 1 coin */
+    case SDL_SCANCODE_1:
+      rygar.main.sys |= (1 << 1);
+      break; /* player 1 start */
+    case SDL_SCANCODE_P:
+      rygar.capture = true;
+      break; /* capture */
     default:
       break;
+    }
+    break;
+
+  case SDL_EVENT_KEY_UP:
+    switch (event->key.scancode) {
+    case SDL_SCANCODE_LEFT:
+      rygar.main.joystick &= ~(1 << 0);
+      break;
+    case SDL_SCANCODE_RIGHT:
+      rygar.main.joystick &= ~(1 << 1);
+      break;
+    case SDL_SCANCODE_DOWN:
+      rygar.main.joystick &= ~(1 << 2);
+      break;
+    case SDL_SCANCODE_UP:
+      rygar.main.joystick &= ~(1 << 3);
+      break;
+    case SDL_SCANCODE_Z:
+      rygar.main.buttons &= ~(1 << 0);
+      break; /* attack */
+    case SDL_SCANCODE_X:
+      rygar.main.buttons &= ~(1 << 1);
+      break; /* jump */
+    case SDL_SCANCODE_5:
+      rygar.main.sys &= ~(1 << 2);
+      break; /* player 1 coin */
+    case SDL_SCANCODE_1:
+      rygar.main.sys &= ~(1 << 1);
+      break; /* player 1 start */
+    default:
+      break;
+    }
+    break;
+
+  default:
+    break;
   }
 
   return SDL_APP_CONTINUE;
@@ -719,6 +696,4 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 }
 
 /* This function runs once at shutdown. */
-void SDL_AppQuit(void *appstate, SDL_AppResult result) {
-  rygar_shutdown();
-}
+void SDL_AppQuit(void *appstate, SDL_AppResult result) { rygar_shutdown(); }
