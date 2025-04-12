@@ -35,6 +35,7 @@
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
+#include <SDL3/SDL_video.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -574,6 +575,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   if (!SDL_CreateWindowAndRenderer("Hello World", WIDTH, HEIGHT,
                                    SDL_WINDOW_RESIZABLE, &window, &renderer)) {
     SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
+
+  if (!SDL_SetWindowAspectRatio(window, 1.33, 1.33)) {
+    SDL_Log("Couldn't set aspect ratio: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }
 
