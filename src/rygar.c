@@ -94,6 +94,7 @@
 
 #define BANK_SIZE 0x8000
 #define BANK_WINDOW_SIZE 0x800
+#define BANK_MASK ((BANK_SIZE / BANK_WINDOW_SIZE) - 1)
 #define BANK_WINDOW_START 0xf000
 #define BANK_WINDOW_END (BANK_WINDOW_START + BANK_WINDOW_SIZE - 1)
 
@@ -281,8 +282,8 @@ uint64_t rygar_tick_main(uint64_t pins) {
                                                     SCROLL_OFFSET);
         tilemap_set_scroll_y(&rygar.bg_tilemap, (rygar.main.bg_scroll[2]));
       } else if (addr == BANK_SWITCH) {
-        rygar.main.current_bank =
-            data >> 3; /* bank addressed by DO3-DO6 in schematic */
+        /* bank addressed by DO3-DO6 in schematic */
+        rygar.main.current_bank = (data >> 3) & BANK_MASK;
       }
     } else if (pins & Z80_RD) {
       if (addr <= RAM_END) {
