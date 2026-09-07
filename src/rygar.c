@@ -329,24 +329,15 @@ void char_tile_info(uint8_t *ram, tile_t *tile, int index) {
   tile->color = hi >> 4;
 }
 
-void fg_tile_info(uint8_t *ram, tile_t *tile, int index) {
+/* The foreground and background tilemaps have the same layout, so they share
+ * a tile info callback. */
+void scroll_tile_info(uint8_t *ram, tile_t *tile, int index) {
   uint8_t lo = ram[index];
   uint8_t hi = ram[index + 0x200];
 
-  /* the tile code is a 10-bit value, represented by the low byte and the three
-   * LSBs of the high byte */
-  tile->code = (hi & 0x03) << 8 | lo;
-
-  /* the four MSBs of the high byte represent the color value */
-  tile->color = hi >> 4;
-}
-
-void bg_tile_info(uint8_t *ram, tile_t *tile, int index) {
-  uint8_t lo = ram[index];
-  uint8_t hi = ram[index + 0x200];
-
-  /* the tile code is a 10-bit value, represented by the low byte and the three
-   * LSBs of the high byte */
+  /* The tile code is a 10-bit value, represented by the low byte and the two
+   * LSBs of the high byte. Ten bits is all that's needed, as the foreground
+   * and background tile ROMs each contain 1024 tiles. */
   tile->code = (hi & 0x03) << 8 | lo;
 
   /* the four MSBs of the high byte represent the color value */
@@ -409,7 +400,7 @@ void rygar_decode_tiles() {
               (uint8_t *)&rygar.main.fg_rom, 1024);
 
   tilemap_init(&rygar.fg_tilemap, &(tilemap_desc_t){
-                                      .tile_cb = fg_tile_info,
+                                      .tile_cb = scroll_tile_info,
                                       .ram = rygar.main.fg_ram,
                                       .rom = rygar.main.fg_rom,
                                       .tile_width = 16,
@@ -429,7 +420,7 @@ void rygar_decode_tiles() {
               (uint8_t *)&rygar.main.bg_rom, 1024);
 
   tilemap_init(&rygar.bg_tilemap, &(tilemap_desc_t){
-                                      .tile_cb = bg_tile_info,
+                                      .tile_cb = scroll_tile_info,
                                       .ram = rygar.main.bg_ram,
                                       .rom = rygar.main.bg_rom,
                                       .tile_width = 16,
