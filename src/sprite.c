@@ -37,13 +37,12 @@
 
 #include <stdbool.h>
 
-void sprite_draw(bitmap_t *bitmap, uint8_t *ram, uint8_t *rom,
+void sprite_draw(bitmap_t *bitmap, uint8_t *ram, int ram_size, uint8_t *rom,
                  uint16_t palette_offset, uint8_t flags) {
   /* Sprites are sorted from highest to lowest priority, so we need to iterate
    * backwards to ensure that the sprites with the highest priority are drawn
    * last */
-  for (int addr = SPRITE_RAM_SIZE - SPRITE_SIZE; addr >= 0;
-       addr -= SPRITE_SIZE) {
+  for (int addr = ram_size - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
     bool enable = ram[addr] & 0x04;
 
     if (enable) {
@@ -86,12 +85,13 @@ void sprite_draw(bitmap_t *bitmap, uint8_t *ram, uint8_t *rom,
 
       for (int row = 0; row < size; row++) {
         for (int col = 0; col < size; col++) {
-          int x = xpos + TILE_WIDTH * (flip_x ? (size - 1 - col) : col);
-          int y = ypos + TILE_HEIGHT * (flip_y ? (size - 1 - row) : row);
+          int x = xpos + SPRITE_TILE_WIDTH * (flip_x ? (size - 1 - col) : col);
+          int y =
+              ypos + SPRITE_TILE_HEIGHT * (flip_y ? (size - 1 - row) : row);
 
           tile_draw(bitmap, rom, code + sprite_tile_offset_table[row][col],
-                    color, palette_offset, x, y, TILE_WIDTH, TILE_HEIGHT,
-                    flip_x, flip_y, priority_mask, flags);
+                    color, palette_offset, x, y, SPRITE_TILE_WIDTH,
+                    SPRITE_TILE_HEIGHT, flip_x, flip_y, priority_mask, flags);
         }
       }
     }

@@ -57,7 +57,7 @@
 #include "tile.h"
 #include "tilemap.h"
 
-#define BETWEEN(n, a, b) ((n >= a) && (n <= b))
+#define BETWEEN(n, a, b) (((n) >= (a)) && ((n) <= (b)))
 
 #define CHAR_ROM_SIZE 0x10000
 #define FG_ROM_SIZE 0x40000
@@ -521,7 +521,7 @@ void rygar_draw(uint32_t *buffer) {
   tilemap_draw(&rygar.bg_tilemap, bitmap, 0x300, TILE_LAYER3);
   tilemap_draw(&rygar.fg_tilemap, bitmap, 0x200, TILE_LAYER2);
   tilemap_draw(&rygar.char_tilemap, bitmap, 0x100, TILE_LAYER1);
-  sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram,
+  sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram, SPRITE_RAM_SIZE,
               (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
 
   /* skip the first 16 lines */
@@ -534,7 +534,7 @@ void rygar_draw(uint32_t *buffer) {
     printf("capturing...\n");
 
     bitmap_fill(bitmap, 0);
-    sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram,
+    sprite_draw(bitmap, (uint8_t *)&rygar.main.sprite_ram, SPRITE_RAM_SIZE,
                 (uint8_t *)&rygar.main.sprite_rom, 0, TILE_LAYER0);
     capture_bitmap(bitmap, "sprite.png");
 
