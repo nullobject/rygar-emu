@@ -43,11 +43,12 @@
 /* sprite size (in bytes) */
 #define SPRITE_SIZE 8
 
-/* sprite tile dimensions */
-#define TILE_WIDTH 8
-#define TILE_HEIGHT 8
+/* dimensions of the 8x8 tiles a sprite is composed of */
+#define SPRITE_TILE_WIDTH 8
+#define SPRITE_TILE_HEIGHT 8
 
-#define SPRITE_RAM_SIZE 0x800
+/* the largest sprite is 64x64, i.e. eight tiles wide and eight tiles high */
+#define MAX_SPRITE_TILES 8
 
 /* There are four possible sprite sizes: 8x8, 16x16, 32x32, and 64x64. All
  * sprites are composed of a number of 8x8 tiles. This lookup table allows us
@@ -56,7 +57,8 @@
  * For example, a 8x8 sprite contains only a single tile with an offset value
  * of zero. A 16x16 sprite contains four tiles, with offset values 0, 1, 2, and
  * 3. */
-static const uint8_t sprite_tile_offset_table[TILE_HEIGHT][TILE_WIDTH] = {
+static const uint8_t
+    sprite_tile_offset_table[MAX_SPRITE_TILES][MAX_SPRITE_TILES] = {
   { 0, 1, 4, 5, 16, 17, 20, 21 },     { 2, 3, 6, 7, 18, 19, 22, 23 },
   { 8, 9, 12, 13, 24, 25, 28, 29 },   { 10, 11, 14, 15, 26, 27, 30, 31 },
   { 32, 33, 36, 37, 48, 49, 52, 53 }, { 34, 35, 38, 39, 50, 51, 54, 55 },
@@ -65,6 +67,8 @@ static const uint8_t sprite_tile_offset_table[TILE_HEIGHT][TILE_WIDTH] = {
 
 /**
  * Draws the sprites to the given bitmap.
+ *
+ * The ram_size argument is the size of the sprite RAM, in bytes.
  *
  * The sprites are stored in the following format:
  *
@@ -87,6 +91,7 @@ static const uint8_t sprite_tile_offset_table[TILE_HEIGHT][TILE_WIDTH] = {
  */
 void sprite_draw(bitmap_t *bitmap,
                  uint8_t *ram,
+                 int ram_size,
                  uint8_t *rom,
                  uint16_t palette_offset,
                  uint8_t flags);
