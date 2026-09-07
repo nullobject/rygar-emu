@@ -239,7 +239,7 @@ uint64_t rygar_tick_main(uint64_t pins) {
     rygar.vblank_count--;
     pins |= Z80_INT; /* activate INT pin during VBLANK */
   } else {
-    rygar.vblank_count = 0;
+    pins &= ~Z80_INT; /* release INT pin outside of VBLANK */
   }
 
   // tick the CPU
@@ -306,7 +306,10 @@ uint64_t rygar_tick_main(uint64_t pins) {
   }
 
   if ((pins & Z80_IORQ) && (pins & Z80_M1)) {
-    /* clear interrupt */
+    /* The interrupt has been acknowledged, so release the INT pin for the rest
+     * of the VBLANK period. Otherwise the CPU would take another interrupt as
+     * soon as it enables them again. */
+    rygar.vblank_count = 0;
     pins &= ~Z80_INT;
   }
 
