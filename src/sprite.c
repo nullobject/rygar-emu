@@ -39,9 +39,10 @@
 
 void sprite_draw(bitmap_t *bitmap, uint8_t *ram, int ram_size, uint8_t *rom,
                  uint16_t palette_offset, uint8_t flags) {
-  /* Sprites are sorted from highest to lowest priority, so we need to iterate
-   * backwards to ensure that the sprites with the highest priority are drawn
-   * last */
+  /* The sprites at the end of the sprite RAM have the highest priority, so we
+   * iterate backwards to draw them first. Every priority mask below contains
+   * TILE_LAYER0, so once a sprite has drawn a pixel no later - and therefore
+   * lower priority - sprite can overwrite it. */
   for (int addr = ram_size - SPRITE_SIZE; addr >= 0; addr -= SPRITE_SIZE) {
     bool enable = ram[addr] & 0x04;
 
@@ -67,20 +68,22 @@ void sprite_draw(bitmap_t *bitmap, uint8_t *ram, int ram_size, uint8_t *rom,
       uint8_t color = b3 & 0x0f;
       uint8_t priority_mask;
 
+      /* TILE_LAYER0 keeps the sprites from overwriting each other, as above.
+       * The tilemap layers are what the priority value actually selects. */
       switch (b3 >> 6) {
       default:
       case 0x0:
         priority_mask = TILE_LAYER0;
-        break; /* obscured by other sprites */
+        break; /* in front of every tilemap */
       case 0x1:
         priority_mask = TILE_LAYER0 | TILE_LAYER1;
-        break; /* obscured by text layer */
+        break; /* behind the text layer */
       case 0x2:
         priority_mask = TILE_LAYER0 | TILE_LAYER1 | TILE_LAYER2;
-        break; /* obscured by foreground */
+        break; /* behind the text layer and the foreground */
       case 0x3:
         priority_mask = TILE_LAYER0 | TILE_LAYER1 | TILE_LAYER2 | TILE_LAYER3;
-        break; /* obscured by background */
+        break; /* behind every tilemap */
       }
 
       for (int row = 0; row < size; row++) {
