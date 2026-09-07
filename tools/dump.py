@@ -56,7 +56,8 @@ def write_array(out, path):
     with open(path, "rb") as f:
         data = f.read()
 
-    out.write("const uint8_t {}[{}] = {{\n".format(symbol_name(path), len(data)))
+    out.write("static const uint8_t {}[{}] = {{\n".format(symbol_name(path),
+                                                          len(data)))
 
     for offset in range(0, len(data), BYTES_PER_LINE):
         chunk = data[offset:offset + BYTES_PER_LINE]
