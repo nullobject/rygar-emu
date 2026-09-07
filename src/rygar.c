@@ -487,10 +487,17 @@ void rygar_shutdown() {
 
 /**
  * Applies the palette to the source bitmap data.
+ *
+ * The source is a region of the frame bitmap, so its rows are BUFFER_WIDTH
+ * pixels apart. The rows of the destination are stride pixels apart, as a
+ * locked SDL texture may be padded.
  */
-void apply_palette(uint16_t *src, uint32_t *dest, int width, int height) {
-  for (int i = 0; i < width * height; i++) {
-    dest[i] = rygar.palette[src[i]];
+void apply_palette(uint16_t *src, uint32_t *dest, int width, int height,
+                   int stride) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      dest[(y * stride) + x] = rygar.palette[src[(y * BUFFER_WIDTH) + x]];
+    }
   }
 }
 
@@ -501,7 +508,7 @@ void capture_bitmap(bitmap_t *bitmap, char const *filename) {
   uint16_t *data = bitmap_data(bitmap, 0, 16);
 
   /* copy the bitmap data to the output buffer */
-  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
+  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH);
 
   /* write the snapshot */
   stbi_write_png(filename, SCREEN_WIDTH, SCREEN_HEIGHT, 4, buffer,
@@ -511,7 +518,7 @@ void capture_bitmap(bitmap_t *bitmap, char const *filename) {
 /**
  * Draws the graphics layers to the frame buffer.
  */
-void rygar_draw(uint32_t *buffer) {
+void rygar_draw(uint32_t *buffer, int stride) {
   bitmap_t *bitmap = &rygar.bitmap;
 
   /* fill bitmap with the background color */
@@ -528,7 +535,7 @@ void rygar_draw(uint32_t *buffer) {
   uint16_t *data = bitmap_data(bitmap, 0, 16);
 
   /* copy bitmap to 32-bit frame buffer */
-  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT);
+  apply_palette(data, buffer, SCREEN_WIDTH, SCREEN_HEIGHT, stride);
 
   if (rygar.capture) {
     printf("capturing...\n");
@@ -557,7 +564,7 @@ void rygar_draw(uint32_t *buffer) {
 /**
  * Runs the emulation for one frame.
  */
-void rygar_exec(uint32_t delta, uint32_t *buffer) {
+void rygar_exec(uint32_t delta, uint32_t *buffer, int stride) {
   uint32_t ticks_to_run = clk_us_to_ticks(CPU_FREQ, delta * 1000);
   uint64_t pins = rygar.main.pins;
 
@@ -567,12 +574,12 @@ void rygar_exec(uint32_t delta, uint32_t *buffer) {
 
   rygar.main.pins = pins;
 
-  rygar_draw(buffer);
+  rygar_draw(buffer, stride);
 }
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
-  if (!SDL_CreateWindowAndRenderer("Hello World", WIDTH, HEIGHT,
+  if (!SDL_CreateWindowAndRenderer("Rygar", WIDTH, HEIGHT,
                                    SDL_WINDOW_RESIZABLE, &window, &renderer)) {
     SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
     return SDL_APP_FAILURE;
@@ -581,6 +588,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   if (!SDL_SetWindowAspectRatio(window, 1.33, 1.33)) {
     SDL_Log("Couldn't set aspect ratio: %s", SDL_GetError());
     return SDL_APP_FAILURE;
+  }
+
+  /* Synchronise the presentation with the display refresh. The emulation is
+   * driven by the wall clock, so this only paces the redraws, but without it
+   * the app spins as fast as it can. */
+  if (!SDL_SetRenderVSync(renderer, 1)) {
+    SDL_Log("Couldn't enable vsync: %s", SDL_GetError());
   }
 
   texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_XBGR8888,
@@ -690,7 +704,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     return SDL_APP_FAILURE;
   }
 
-  rygar_exec(delta, pixels);
+  /* the pitch is in bytes, but we address the texture as 32-bit pixels */
+  rygar_exec(delta, pixels, pitch / (int)sizeof(uint32_t));
 
   SDL_UnlockTexture(texture);
   SDL_RenderTexture(renderer, texture, NULL, NULL);
@@ -702,4 +717,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 }
 
 /* This function runs once at shutdown. */
-void SDL_AppQuit(void *appstate, SDL_AppResult result) { rygar_shutdown(); }
+void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+  rygar_shutdown();
+  SDL_DestroyTexture(texture);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+}
