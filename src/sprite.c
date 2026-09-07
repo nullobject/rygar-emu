@@ -68,19 +68,23 @@ void sprite_draw(bitmap_t *bitmap, uint8_t *ram, uint8_t *rom,
       uint8_t color = b3 & 0x0f;
       uint8_t priority_mask;
 
+      /* The mask only contains the tilemap layers, never TILE_LAYER0, so that
+       * sprites don't obscure each other. A sprite drawn later simply
+       * overwrites an earlier one, which is what gives the sprites at the
+       * start of the sprite RAM the highest priority. */
       switch (b3 >> 6) {
       default:
       case 0x0:
-        priority_mask = TILE_LAYER0;
-        break; /* obscured by other sprites */
+        priority_mask = 0;
+        break; /* obscured by nothing */
       case 0x1:
-        priority_mask = TILE_LAYER0 | TILE_LAYER1;
+        priority_mask = TILE_LAYER1;
         break; /* obscured by text layer */
       case 0x2:
-        priority_mask = TILE_LAYER0 | TILE_LAYER1 | TILE_LAYER2;
+        priority_mask = TILE_LAYER1 | TILE_LAYER2;
         break; /* obscured by foreground */
       case 0x3:
-        priority_mask = TILE_LAYER0 | TILE_LAYER1 | TILE_LAYER2 | TILE_LAYER3;
+        priority_mask = TILE_LAYER1 | TILE_LAYER2 | TILE_LAYER3;
         break; /* obscured by background */
       }
 
